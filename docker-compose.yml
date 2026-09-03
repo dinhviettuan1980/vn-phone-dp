@@ -1,0 +1,55 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: phoneintel
+      POSTGRES_PASSWORD: phoneintel
+      POSTGRES_DB: phoneintel
+    ports:
+      - "55432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U phoneintel"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: ./apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://phoneintel:phoneintel@postgres:5432/phoneintel
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  crawler:
+    build:
+      context: ./services/crawler
+    restart: "no"
+    environment:
+      DATABASE_URL: postgres://phoneintel:phoneintel@postgres:5432/phoneintel
+      FIXTURES_BASE_URL: http://fixtures:8899
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["python", "-m", "jobs.crawl_worker", "--source", "all"]
+
+  fixtures:
+    build:
+      context: ./services/crawler
+    restart: unless-stopped
+    command: ["python", "tools/serve_fixtures.py"]
+    ports:
+      - "8899:8899"
+
+volumes:
+  pgdata:

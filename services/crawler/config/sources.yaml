@@ -1,0 +1,49 @@
+# Source Registry. Add a new source by adding an entry here — no core code
+# changes required. `collector` selects the collector class from
+# jobs/crawl_worker.py's COLLECTOR_REGISTRY (defaults to the generic
+# "http" HttpCollector if omitted).
+#
+# ${FIXTURES_BASE_URL} is substituted at load time (default http://localhost:8899).
+# In phase 1 all three sources point at the local fixture server described in
+# docs/architecture.md — no live external site is crawled by this repo.
+
+sources:
+  - name: "Fixture Official Org"
+    base_url: "${FIXTURES_BASE_URL}/site_official"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 1
+    robots_checked: true
+    license_notes: "Local fixture data for demo/dev purposes only; not real personal data."
+    urls:
+      - "${FIXTURES_BASE_URL}/site_official/index.html"
+      - "${FIXTURES_BASE_URL}/site_official/contact.html"
+      - "${FIXTURES_BASE_URL}/site_official/hotline.html"
+
+  - name: "Fixture Business Directory"
+    base_url: "${FIXTURES_BASE_URL}/site_directory"
+    source_type: BUSINESS_DIRECTORY
+    trust_level: MEDIUM
+    collector: directory
+    crawl_delay_seconds: 1
+    robots_checked: true
+    license_notes: "Local fixture data for demo/dev purposes only."
+    urls:
+      - "${FIXTURES_BASE_URL}/site_directory/index.html"
+      - "${FIXTURES_BASE_URL}/site_directory/listing-a.html"
+      - "${FIXTURES_BASE_URL}/site_directory/listing-b.html"
+      - "${FIXTURES_BASE_URL}/site_directory/listing-c.html"
+
+  - name: "Fixture Low-Trust Blog"
+    base_url: "${FIXTURES_BASE_URL}/site_blog"
+    source_type: OTHER
+    trust_level: LOW
+    collector: http
+    crawl_delay_seconds: 1
+    robots_checked: true
+    license_notes: "Local fixture data for demo/dev purposes only."
+    urls:
+      - "${FIXTURES_BASE_URL}/site_blog/index.html"
+      - "${FIXTURES_BASE_URL}/site_blog/post-scam-report.html"
+      - "${FIXTURES_BASE_URL}/site_blog/post-spam-numbers.html"

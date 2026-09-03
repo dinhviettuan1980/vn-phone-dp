@@ -30,6 +30,18 @@ def _domain_of(url: str) -> str:
 
 
 def _get_robots_parser(url: str) -> urllib.robotparser.RobotFileParser:
+    """Fetch and parse robots.txt using OUR declared User-Agent, not
+    Python's default "Python-urllib/x.y" (which RobotFileParser.read() uses
+    internally via urllib.request). Several real CDNs 403 the generic
+    urllib UA on /robots.txt specifically while happily serving the actual
+    page to our declared bot UA — using the stdlib default there produced
+    false "disallow everything" verdicts for real, permissive sites.
+
+    Status-code handling mirrors RobotFileParser.read()'s own semantics:
+    401/403 -> disallow_all (explicit access denial); other 4xx -> allow_all
+    (RFC 9309: missing robots.txt means unrestricted); 5xx/network error ->
+    disallow_all (conservative — don't hammer a site that's failing).
+    """
     domain = _domain_of(url)
     if domain not in _robots_cache:
         parsed = urlparse(url)
@@ -37,12 +49,15 @@ def _get_robots_parser(url: str) -> urllib.robotparser.RobotFileParser:
         rp = urllib.robotparser.RobotFileParser()
         rp.set_url(robots_url)
         try:
-            rp.read()
-        except Exception:
-            # Unreachable robots.txt -> fail closed to "no rules found" is
-            # what RobotFileParser does by default (allows everything), which
-            # matches its documented behavior for a missing robots.txt.
-            pass
+            response = httpx.get(robots_url, headers={"User-Agent": USER_AGENT}, timeout=10.0, follow_redirects=True)
+            if response.status_code in (401, 403):
+                rp.disallow_all = True
+            elif response.status_code >= 400:
+                rp.allow_all = True
+            else:
+                rp.parse(response.text.splitlines())
+        except httpx.HTTPError:
+            rp.disallow_all = True
         _robots_cache[domain] = rp
     return _robots_cache[domain]
 

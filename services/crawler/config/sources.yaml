@@ -327,3 +327,54 @@ sources:
     urls:
       - "https://www.hdsaison.com.vn/vn/lien-he.html"
 
+# ---------------------------------------------------------------------------
+# Wave 3 (2026-09-03) -- government agencies, per user priority order
+# (banks/credit institutions first, then government). Same per-source
+# robots.txt check as previous waves. Only 4 sources so far -- WebSearch
+# hit its session rate limit mid-research; more to add once it resets.
+# ---------------------------------------------------------------------------
+
+  - name: "SBV (State Bank of Vietnam)"
+    base_url: "https://sbv.gov.vn"
+    source_type: GOVERNMENT
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Central bank regulator, public official contact directory (robots.txt: Disallow empty -- unrestricted). Institutional numbers only."
+    urls:
+      - "https://sbv.gov.vn/en/danh-b%E1%BA%A1-li%C3%AAn-h%E1%BB%87"
+
+  - name: "Tổng cục Thuế (GDT)"
+    base_url: "https://www.gdt.gov.vn"
+    source_type: GOVERNMENT
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Tax authority, public official hotline directory (robots.txt only restricts a specific search-bot UA, no rule for ours). Institutional numbers only."
+    urls:
+      - "https://www.gdt.gov.vn/wps/portal/home/hotline"
+
+  - name: "Bảo hiểm Xã hội Việt Nam"
+    base_url: "https://baohiemxahoi.gov.vn"
+    source_type: GOVERNMENT
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Social insurance agency, public official hotline page. robots.txt returns 404 -- per RFC 9309 a 4xx (non-401/403) on robots.txt means unrestricted. Institutional numbers only."
+    urls:
+      - "https://baohiemxahoi.gov.vn/Pages/tong-dai-ho-tro.aspx"
+
+  - name: "Cổng Dịch vụ công Quốc gia"
+    base_url: "https://dichvucong.gov.vn"
+    source_type: GOVERNMENT
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "National public service portal (Ministry of Public Security), public official page (robots.txt allows this path). Institutional numbers only."
+    urls:
+      - "https://dichvucong.gov.vn/p/home/dvc-gioi-thieu.html"
+

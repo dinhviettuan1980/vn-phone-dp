@@ -7,10 +7,8 @@
     "outDir": "dist",
     "rootDir": "src",
     "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "declaration": false
+    "declaration": true,
+    "skipLibCheck": true
   },
   "include": ["src"]
 }

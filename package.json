@@ -7,7 +7,7 @@
   ],
   "scripts": {
     "dev": "npm run dev -w @phoneintel/api",
-    "build": "npm run build -w @phoneintel/api",
+    "build": "npm run build -w @phoneintel/shared-types && npm run build -w @phoneintel/api",
     "test": "npm run test -w @phoneintel/api",
     "aggregate": "npm run aggregate -w @phoneintel/api",
     "stats": "npm run stats -w @phoneintel/api",

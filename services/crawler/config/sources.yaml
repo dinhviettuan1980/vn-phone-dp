@@ -57,11 +57,19 @@ sources:
 # and called by customers, not personal data. robots.txt was checked for
 # every domain; only URLs outside any Disallow rule were added.
 #
-# Excluded after checking: MB Bank (mbbank.com.vn) — its contact content
-# page returns HTTP 403 specifically for a bot-identifying User-Agent (loads
-# fine with a browser UA), which we treat as an explicit "no bots" signal.
-# Spoofing a browser UA to get past that would be exactly the kind of bypass
-# this project's ethics section rules out — so it's skipped, not worked around.
+# Excluded after checking (confirmed with our real, declared crawler UA --
+# not a false positive from Python's generic default UA, see the fix in
+# collectors/http/http_collector.py._get_robots_parser):
+#   - MB Bank (mbbank.com.vn) — contact content page returns HTTP 403 for a
+#     bot-identifying User-Agent specifically (loads fine with a browser UA).
+#   - Mcredit (mcredit.com.vn) — robots.txt itself returns a consistent
+#     CloudFront 403 "Request blocked" regardless of UA.
+#   - TPBank (tpb.vn) — robots.txt fetch times out at the TLS handshake with
+#     our crawler's client (WAF/CDN-level, not UA-string-based).
+# All three read as "this site doesn't want bot traffic" -- spoofing a
+# browser UA or otherwise working around that would be exactly the kind of
+# bypass this project's ethics section rules out, so they're skipped, not
+# worked around.
 # ---------------------------------------------------------------------------
 
   - name: "Vietcombank"
@@ -118,17 +126,6 @@ sources:
     license_notes: "Public official announcement of hotline numbers (robots.txt allows /tin-tuc/). Institutional numbers only."
     urls:
       - "https://www.vpbank.com.vn/tin-tuc/tin-vpbank/2020/thong-bao-cac-so-dien-thoai-chinh-thuc-tong-dai-vpbank"
-
-  - name: "TPBank"
-    base_url: "https://tpb.vn"
-    source_type: OFFICIAL_WEBSITE
-    trust_level: HIGH
-    collector: official
-    crawl_delay_seconds: 3
-    robots_checked: true
-    license_notes: "Public official contact page. robots.txt itself returns a CDN error (4xx) rather than real rules -- per RFC 9309 a 4xx on robots.txt means unrestricted; the actual content page loads normally for our declared bot User-Agent, unlike mbbank.com.vn which explicitly 403s it."
-    urls:
-      - "https://tpb.vn/lien-he-thong-tin"
 
   - name: "HDBank"
     base_url: "https://hdbank.com.vn"
@@ -196,13 +193,3 @@ sources:
     urls:
       - "https://www.tnex.com.vn/lien-he/"
 
-  - name: "Mcredit"
-    base_url: "https://mcredit.com.vn"
-    source_type: OFFICIAL_WEBSITE
-    trust_level: HIGH
-    collector: official
-    crawl_delay_seconds: 3
-    robots_checked: true
-    license_notes: "Consumer finance company (MB/Shinsei JV). robots.txt itself CDN-blocked (403, same 4xx-on-robots.txt case as TPBank above); actual content page loads normally for our bot User-Agent. Institutional numbers only."
-    urls:
-      - "https://mcredit.com.vn/vi/lien-he"

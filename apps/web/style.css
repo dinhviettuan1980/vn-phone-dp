@@ -1,0 +1,259 @@
+:root {
+  --ink: #1a1a1a;
+  --ink-2: #444444;
+  --ink-3: #767676;
+  --paper: #fafaf7;
+  --paper-2: #f1f0ea;
+  --line: #2a2a2a;
+  --line-soft: #c8c8c2;
+  --accent: #5eb594;
+  --accent-soft: #dceee4;
+  --accent-ink: #2f6b54;
+  --warn: #d8a653;
+  --danger: #c3604a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  padding: 32px 16px 16px;
+  text-align: center;
+}
+
+.header h1 {
+  margin: 0 0 6px;
+  font-size: 1.6rem;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 0.9rem;
+}
+
+.container {
+  flex: 1;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 8px 16px 40px;
+}
+
+.search-box {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+#phone-input {
+  flex: 1;
+  padding: 12px 14px;
+  font-size: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: white;
+  color: var(--ink);
+}
+
+#phone-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.search-box button {
+  padding: 12px 20px;
+  font-size: 0.95rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+}
+
+.search-box button:hover {
+  filter: brightness(0.95);
+}
+
+.hint {
+  font-size: 0.75rem;
+  color: var(--ink-3);
+  margin-top: 12px;
+  line-height: 1.5;
+}
+
+.status {
+  margin-top: 20px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+
+.status.loading {
+  background: var(--paper-2);
+  color: var(--ink-2);
+}
+
+.status.error {
+  background: #f6e4de;
+  color: var(--danger);
+}
+
+.status.empty {
+  background: var(--paper-2);
+  color: var(--ink-2);
+}
+
+.result {
+  margin-top: 20px;
+}
+
+.result-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  background: white;
+}
+
+.phone-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.phone-number {
+  font-family: "SFMono-Regular", ui-monospace, Menlo, monospace;
+  font-size: 1.3rem;
+  font-weight: bold;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border: 1px solid var(--accent-ink);
+}
+
+.badge.invalid {
+  background: #f6e4de;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.stats-row {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+  font-size: 0.78rem;
+  color: var(--ink-3);
+}
+
+.stats-row .stat-value {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 1.05rem;
+  color: var(--ink);
+  font-weight: bold;
+  display: block;
+}
+
+.identities-title {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+  margin: 24px 0 10px;
+}
+
+.identities-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.identity-card {
+  border: 1px dashed var(--line-soft);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: white;
+}
+
+.identity-name {
+  font-weight: bold;
+  font-size: 0.95rem;
+}
+
+.identity-meta {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--ink-3);
+}
+
+.identity-meta span {
+  background: var(--paper-2);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.confidence-bar {
+  margin-top: 8px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  overflow: hidden;
+}
+
+.confidence-bar-fill {
+  height: 100%;
+  background: var(--accent);
+}
+
+.confidence-bar-fill.warn {
+  background: var(--warn);
+}
+
+.confidence-bar-fill.danger {
+  background: var(--danger);
+}
+
+.empty-note {
+  color: var(--ink-3);
+  font-size: 0.85rem;
+}
+
+.footer {
+  padding: 20px 16px 32px;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--ink-3);
+}
+
+.footer a {
+  color: var(--accent-ink);
+}

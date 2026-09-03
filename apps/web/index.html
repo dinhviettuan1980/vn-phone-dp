@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tra cứu số điện thoại | Vietnam Phone Intelligence</title>
+  <meta name="description" content="Tra cứu thông tin số điện thoại Việt Nam — nguồn dữ liệu công khai từ ngân hàng, fintech chính thức." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="header">
+    <h1>Tra cứu số điện thoại</h1>
+    <p class="subtitle">Vietnam Phone Intelligence Platform — bản demo giai đoạn 1</p>
+  </header>
+
+  <main class="container">
+    <form id="search-form" class="search-box" autocomplete="off">
+      <input
+        id="phone-input"
+        type="tel"
+        inputmode="tel"
+        placeholder="Nhập số điện thoại, ví dụ: 1900545413"
+        aria-label="Số điện thoại cần tra cứu"
+        required
+      />
+      <button type="submit">Tra cứu</button>
+    </form>
+
+    <p class="hint">
+      Dữ liệu hiện tại chỉ gồm số hotline/tổng đài công khai từ website chính thức
+      của các ngân hàng &amp; fintech (Vietcombank, BIDV, VietinBank, Techcombank,
+      VPBank, HDBank, VIB, SeABank, MoMo, Cake, TNEX...). Đây là bản demo giai đoạn 1,
+      chưa bao phủ số cá nhân.
+    </p>
+
+    <div id="status" class="status" hidden></div>
+
+    <section id="result" class="result" hidden>
+      <div class="result-card">
+        <div class="phone-row">
+          <span id="result-phone" class="phone-number"></span>
+          <span id="result-type" class="badge"></span>
+          <span id="result-valid" class="badge"></span>
+        </div>
+
+        <div id="stats-row" class="stats-row"></div>
+      </div>
+
+      <h2 class="identities-title">Thông tin nhận diện</h2>
+      <ul id="identities-list" class="identities-list"></ul>
+      <p id="no-identities" class="empty-note" hidden>
+        Chưa có thông tin nhận diện nào cho số này (đã ghi nhận số, nhưng chưa xác
+        định được chủ thể).
+      </p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>
+      Vietnam Phone Intelligence Platform — Phase 1 demo. Dữ liệu thu thập từ
+      nguồn công khai (website chính thức của tổ chức), không thu thập dữ liệu cá
+      nhân. Xem <a href="https://github.com/dinhviettuan1980/vn-phone-dp" target="_blank" rel="noopener">mã nguồn</a>.
+    </p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

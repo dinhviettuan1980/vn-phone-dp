@@ -112,6 +112,7 @@ isn't set.
 
 ```
 apps/api/              Fastify API, Drizzle schema, normalizer, extractor, aggregation, CLI
+apps/web/               Static lookup FE (plain HTML/CSS/JS, no build step) — https://vn-phone.tuandv.id.vn
 services/crawler/       Python crawler framework + fixtures + tests
 packages/shared-types/  TS types shared conceptually across API/crawler (crawler mirrors independently)
 database/migrations/    SQL schema (source of truth)

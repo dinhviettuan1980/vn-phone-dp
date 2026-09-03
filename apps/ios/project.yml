@@ -1,0 +1,62 @@
+name: PhoneIntel
+options:
+  bundleIdPrefix: id.vn.tuandv
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: 5.0
+    MARKETING_VERSION: 1.0.0
+    CURRENT_PROJECT_VERSION: 1
+    DEVELOPMENT_TEAM: ""   # set your Apple Developer Team ID here, or leave blank and pick it in Xcode's Signing & Capabilities tab
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  PhoneIntel:
+    type: application
+    platform: iOS
+    sources:
+      - path: PhoneIntel/App
+      - path: PhoneIntel/Shared
+    info:
+      path: PhoneIntel/App/Info.plist
+      properties:
+        CFBundleDisplayName: "Tra Số VN"
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+    entitlements:
+      path: PhoneIntel/App/PhoneIntel.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.id.vn.tuandv.phoneintel
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: id.vn.tuandv.phoneintel
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+    dependencies:
+      - target: PhoneIntelCallDirectory
+        embed: true
+
+  PhoneIntelCallDirectory:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: PhoneIntel/CallDirectoryExtension
+      - path: PhoneIntel/Shared
+    info:
+      path: PhoneIntel/CallDirectoryExtension/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.callkit.call-directory
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).CallDirectoryHandler
+    entitlements:
+      path: PhoneIntel/CallDirectoryExtension/PhoneIntelCallDirectory.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.id.vn.tuandv.phoneintel
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: id.vn.tuandv.phoneintel.CallDirectory

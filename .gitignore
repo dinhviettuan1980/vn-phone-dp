@@ -12,3 +12,7 @@ venv/
 .npm-cache/
 .devdata/
 logfile
+
+# iOS
+apps/ios/*.xcodeproj/
+apps/ios/DerivedData/

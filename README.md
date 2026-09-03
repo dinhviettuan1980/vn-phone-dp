@@ -15,6 +15,75 @@ Raw data is never overwritten. A phone number can have many observations
 across many sources, and many (possibly conflicting) identity claims — see
 `docs/architecture.md` for why.
 
+## Trạng thái dự án (cập nhật gần nhất: 2026-09-03)
+
+*Đọc phần này trước nếu tiếp tục làm việc trên project — tóm tắt để không
+mất context giữa các phiên làm việc.*
+
+**Việc đã xong:**
+- Phase 1 đầy đủ theo `IMPLEMENTATION_PLAN.md`: schema, normalizer, extractor,
+  crawler framework, aggregation, API, Docker Compose, seed pipeline, test.
+- Dev DB + production đều chạy trên VPS `103.163.216.32` (không dùng Docker
+  Postgres/local) — chi tiết trong `docs/architecture.md` mục "Remote dev
+  database".
+- API + FE đã deploy live: **API** pm2 `phoneintel-api` (port 8037 nội bộ),
+  **FE tra cứu** tại **https://vn-phone.tuandv.id.vn** (nginx proxy `/api/*`,
+  SSL certbot). Cả 2 cùng redeploy qua `~/deploy-vn-phone-dp.sh` (auto-deploy
+  cron 2 phút trên VPS, xem `apps/web/`).
+- **29 nguồn dữ liệu** trong `services/crawler/config/sources.yaml` (3
+  fixture demo + 22 ngân hàng/tổ chức tín dụng + 4 cơ quan nhà nước) →
+  **196 số điện thoại thật** đã crawl (không tính fixture). Ưu tiên hiện tại
+  theo yêu cầu user: **ngân hàng & tổ chức tín dụng trước (càng nhiều càng
+  tốt), sau đó mới đến cơ quan chính phủ.**
+  - Đã crawl: Vietcombank, VietinBank, BIDV, Techcombank, VPBank, HDBank,
+    VIB, SeABank, MoMo, Cake, TNEX, Agribank, ACB, Sacombank, Eximbank, OCB,
+    LPBank, MSB, Nam A Bank, FE Credit, Home Credit, HD Saison (22 ngân
+    hàng/fintech/tổ chức tín dụng); SBV, Tổng cục Thuế, Bảo hiểm Xã hội,
+    Cổng Dịch vụ công Quốc gia (4 cơ quan nhà nước, mới bắt đầu).
+  - Loại trừ có chủ đích (chặn bot xác nhận, không spoof UA để né): MB Bank,
+    TPBank, Mcredit, SHB — xem comment đầu file `sources.yaml` để biết lý do
+    từng cái.
+  - **Việc tiếp theo**: tìm thêm ngân hàng/tổ chức tín dụng còn thiếu (vd
+    ABBank, BVBank, PVcomBank, VietABank, Bac A Bank, Kienlongbank,
+    Saigonbank, NCB, PGBank, VietBank, ngân hàng nước ngoài tại VN như HSBC/
+    Standard Chartered/Shinhan/Woori...), rồi mở rộng thêm cơ quan chính phủ
+    (Bộ Công an, Tổng cục Hải quan, Bộ Y tế...). WebSearch có giới hạn phiên
+    — nếu bị chặn, đợi reset rồi tiếp tục theo đúng quy trình: search trang
+    liên hệ chính thức → check robots.txt bằng UA thật của crawler → check
+    nội dung tĩnh có số điện thoại không → thêm vào `sources.yaml` → crawl
+    từ VPS → `npm run aggregate`.
+- **App iOS** (`apps/ios/`) đã viết xong + build thử thành công (simulator):
+  SwiftUI app + CallKit Call Directory Extension, hiện tên ngân hàng khi có
+  cuộc gọi đến (giống Truecaller/ViewCaller nhưng dùng data của mình).
+  **CHƯA cài lên iPhone thật** — user sẽ tự làm sau (cần Xcode + cắm cáp +
+  chọn Apple ID cá nhân miễn phí). Hướng dẫn đầy đủ: `apps/ios/README.md`.
+
+**Bug thật đã tìm + sửa trong lúc làm** (đáng nhớ vì có thể tái diễn dạng
+khác khi thêm nguồn mới):
+1. `npm run build` (tsc thật) chưa từng được test — chỉ test qua
+   vitest/tsx (esbuild, khoan dung hơn). Path mapping trỏ thẳng ra file .ts
+   ngoài rootDir làm tsc fail. Fix: cho `packages/shared-types` build tsc
+   thật, dùng qua npm workspace dependency.
+2. JS `\b` (word boundary) không nhận diện ký tự có dấu tiếng Việt → regex
+   cleanup tên công ty im lặng không strip được gì.
+3. HTML→text join bằng space đơn giản làm context window lẫn nội dung giữa
+   các `<li>`/`<p>` không liên quan → phải giữ ranh giới đoạn (`\n`).
+4. `robots.txt` fetch dùng User-Agent mặc định của Python (`Python-urllib/x.y`)
+   thay vì UA thật của crawler → một số CDN (MoMo, Cake) 403 UA mặc định
+   trong khi vẫn cho UA thật của mình crawl bình thường → false "disallow".
+   Fix: tự fetch robots.txt bằng UA thật, không dùng `rp.read()` mặc định.
+
+**Quyết định/nguyên tắc đang áp dụng khi thêm nguồn mới** (xem
+`docs/architecture.md` mục "Privacy / scope guardrail"):
+- Chỉ crawl trang liên hệ/hotline CÔNG KHAI của tổ chức (không phải dữ liệu
+  cá nhân) — ngân hàng, tổ chức tín dụng, cơ quan nhà nước.
+- Luôn check robots.txt bằng chính UA thật của crawler trước khi thêm.
+- Nếu trang chặn bot (403 dù UA thật, hoặc bot-fight/Cloudflare challenge cả
+  browser UA) → loại trừ, KHÔNG spoof UA hay giải JS challenge để né.
+- IP dev máy Mac có thể đổi bất chợt (đã gặp 2 lần) — nếu API/test báo lỗi
+  "no pg_hba.conf entry", cần thêm IP mới vào `pg_hba.conf` trên VPS (xem
+  `docs/architecture.md`).
+
 ## Live deployment
 
 **https://vn-phone.tuandv.id.vn** — lookup FE, publicly reachable.

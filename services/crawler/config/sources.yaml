@@ -47,3 +47,162 @@ sources:
       - "${FIXTURES_BASE_URL}/site_blog/index.html"
       - "${FIXTURES_BASE_URL}/site_blog/post-scam-report.html"
       - "${FIXTURES_BASE_URL}/site_blog/post-spam-numbers.html"
+
+# ---------------------------------------------------------------------------
+# Real sources — official bank/fintech contact & hotline pages.
+#
+# Scope check performed per source before adding here (see docs/architecture.md
+# privacy guardrail): each URL below is a bank/fintech's own public "Contact
+# us" / official hotline page — institutional numbers meant to be published
+# and called by customers, not personal data. robots.txt was checked for
+# every domain; only URLs outside any Disallow rule were added.
+#
+# Excluded after checking: MB Bank (mbbank.com.vn) — its contact content
+# page returns HTTP 403 specifically for a bot-identifying User-Agent (loads
+# fine with a browser UA), which we treat as an explicit "no bots" signal.
+# Spoofing a browser UA to get past that would be exactly the kind of bypass
+# this project's ethics section rules out — so it's skipped, not worked around.
+# ---------------------------------------------------------------------------
+
+  - name: "Vietcombank"
+    base_url: "https://www.vietcombank.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official contact/hotline page (robots.txt: Allow: /). Institutional numbers only."
+    urls:
+      - "https://www.vietcombank.com.vn/en/Personal/H%E1%BB%97-tr%E1%BB%A3-247/Lien-he-Cham-soc-khach-hang"
+
+  - name: "VietinBank"
+    base_url: "https://www.vietinbank.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official contact/hotline page (robots.txt allows this path). Institutional numbers only."
+    urls:
+      - "https://www.vietinbank.vn/en/lien-he-cham-soc-khach-hang"
+
+  - name: "BIDV"
+    base_url: "https://bidv.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official contact/hotline page (robots.txt allows this path). Institutional numbers only."
+    urls:
+      - "https://bidv.com.vn/vn/ca-nhan/lien-he"
+
+  - name: "Techcombank"
+    base_url: "https://techcombank.com"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official contact/hotline page (robots.txt allows this path). Institutional numbers only."
+    urls:
+      - "https://techcombank.com/en/contact-us"
+
+  - name: "VPBank"
+    base_url: "https://www.vpbank.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official announcement of hotline numbers (robots.txt allows /tin-tuc/). Institutional numbers only."
+    urls:
+      - "https://www.vpbank.com.vn/tin-tuc/tin-vpbank/2020/thong-bao-cac-so-dien-thoai-chinh-thuc-tong-dai-vpbank"
+
+  - name: "TPBank"
+    base_url: "https://tpb.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official contact page. robots.txt itself returns a CDN error (4xx) rather than real rules -- per RFC 9309 a 4xx on robots.txt means unrestricted; the actual content page loads normally for our declared bot User-Agent, unlike mbbank.com.vn which explicitly 403s it."
+    urls:
+      - "https://tpb.vn/lien-he-thong-tin"
+
+  - name: "HDBank"
+    base_url: "https://hdbank.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official contact page (robots.txt: Allow: /). Institutional numbers only."
+    urls:
+      - "https://hdbank.com.vn/vi/contact"
+
+  - name: "VIB"
+    base_url: "https://www.vib.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official contact/hotline page (robots.txt allows this path). Institutional numbers only."
+    urls:
+      - "https://www.vib.com.vn/vn/lien-he"
+
+  - name: "SeABank"
+    base_url: "https://www.seabank.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official announcement of hotline numbers (robots.txt: Allow: /). Institutional numbers only."
+    urls:
+      - "https://www.seabank.com.vn/tin-tuc/tin-seabank/news/sb-thong-bao-thay-doi-so-hotline-dia-chi-email-ho-tro-khach-hang"
+
+  - name: "MoMo"
+    base_url: "https://www.momo.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "E-wallet, not a bank, but same category of official public contact page (robots.txt allows /lienhe). Institutional numbers only."
+    urls:
+      - "https://www.momo.vn/lienhe"
+
+  - name: "Cake by VPBank"
+    base_url: "https://cake.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Digital bank operated under VPBank's license (robots.txt allows this path). Institutional numbers only."
+    urls:
+      - "https://cake.vn/lien-he"
+
+  - name: "TNEX (MSB)"
+    base_url: "https://www.tnex.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Digital bank operated under MSB's license (robots.txt allows this path). Institutional numbers only."
+    urls:
+      - "https://www.tnex.com.vn/lien-he/"
+
+  - name: "Mcredit"
+    base_url: "https://mcredit.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Consumer finance company (MB/Shinsei JV). robots.txt itself CDN-blocked (403, same 4xx-on-robots.txt case as TPBank above); actual content page loads normally for our bot User-Agent. Institutional numbers only."
+    urls:
+      - "https://mcredit.com.vn/vi/lien-he"

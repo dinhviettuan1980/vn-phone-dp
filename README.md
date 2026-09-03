@@ -37,11 +37,18 @@ directory, low-trust blog — entirely fake data) over real HTTP so the
 crawler exercises real robots.txt/rate-limit/retry logic without touching
 any live external website. See `docs/architecture.md`.
 
-## Quick start (local dev, no Docker)
+## Quick start (local dev, no Docker, no local Postgres)
+
+There's a dedicated dev Postgres already running on the VPS
+(`103.163.216.32`, database `phoneintel`) — no need to run Postgres locally
+or via Docker for day-to-day API development. Credentials are in the
+project's `.env` (gitignored). See `docs/architecture.md` for how it's
+firewalled (scoped to a specific dev IP, not open to the internet).
 
 ```bash
-# 1. Postgres running locally, DATABASE_URL pointing at it
-psql "$DATABASE_URL" -f database/migrations/0001_init.sql
+# 1. DATABASE_URL already points at the remote dev DB via .env — just load it
+export $(grep -v '^#' .env | xargs)
+psql "$DATABASE_URL" -f database/migrations/0001_init.sql   # already applied once, safe to skip
 
 # 2. install deps
 npm install

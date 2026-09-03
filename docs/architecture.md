@@ -106,6 +106,31 @@ premature shared abstraction.
 Re-running `docker compose up` + the crawl + aggregate commands any number
 of times converges to the same state, never duplicates.
 
+## Remote dev database
+
+Day-to-day API development connects straight to a Postgres instance on the
+user's existing VPS (`103.163.216.32`, database `phoneintel`, role
+`phoneintel_user`) instead of Docker or a local install — one less moving
+part. Network access is scoped, not open to the internet:
+
+- `pg_hba.conf` on the VPS has a `host phoneintel phoneintel_user
+  <dev-IP>/32 scram-sha-256` rule — only that one source IP can authenticate
+  as this role against this database. Every other database on that server
+  is unaffected (default `pg_hba.conf` rules for other apps' local-only
+  connections were untouched).
+- `listen_addresses = '*'` was required for any remote connection to reach
+  Postgres at all, but by itself doesn't widen *who* can connect — that's
+  still gated by `pg_hba.conf` per above.
+- No inbound firewall (`ufw`) was active on the VPS at setup time, so no
+  firewall rule was needed to reach port 5432; if `ufw` is enabled later,
+  the rule to add is `ufw allow from <dev-IP> to any port 5432 proto tcp`.
+- If the dev machine's IP changes, the `pg_hba.conf` entry needs updating
+  (and the server reloaded) or the connection will simply be refused —
+  fails closed, not open.
+
+Credentials live in `.env` (gitignored), not in this file or anywhere in
+git history.
+
 ## Privacy / scope guardrail (read before adding sources)
 
 Phase 1 sources (`config/sources.yaml`) are restricted to

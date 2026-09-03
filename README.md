@@ -17,12 +17,20 @@ across many sources, and many (possibly conflicting) identity claims — see
 
 ## Live deployment
 
-Runs as `phoneintel-api` under pm2 on the VPS (`103.163.216.32`), on
-internal port `8037` (127.0.0.1 only — no public domain/nginx yet). It's
-part of the standard auto-deploy cron (`~/vn-phone-dp` + `~/deploy-vn-phone-dp.sh`
-+ `APPS` entry in `~/auto-deploy.sh`): push to `main` and it redeploys
-within ~2 minutes. Connects to the same `phoneintel` database as local dev,
-just over `127.0.0.1` instead of the scoped external-IP rule (see
+**https://vn-phone.tuandv.id.vn** — lookup FE, publicly reachable.
+
+API runs as `phoneintel-api` under pm2 on the VPS (`103.163.216.32`),
+internal port `8037` (127.0.0.1 only, not directly exposed). nginx
+(`/etc/nginx/sites-available/vn-phone.tuandv.id.vn`) serves `apps/web/`
+as static files at the domain root and reverse-proxies `/api/*` to the
+pm2 process — same-origin, no CORS needed. SSL via certbot (auto-renews).
+
+Both API and FE redeploy together via the standard auto-deploy cron
+(`~/vn-phone-dp` + `~/deploy-vn-phone-dp.sh`, which does `git pull`, builds
+the API, `pm2 restart`, and `rsync`s `apps/web/` to `/var/www/vn-phone/` +
+`APPS` entry in `~/auto-deploy.sh`): push to `main` and it's live within
+~2 minutes. Connects to the same `phoneintel` database as local dev, just
+over `127.0.0.1` instead of the scoped external-IP rule (see
 `docs/architecture.md`).
 
 ## Stack

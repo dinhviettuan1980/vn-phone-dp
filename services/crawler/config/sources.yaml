@@ -193,3 +193,137 @@ sources:
     urls:
       - "https://www.tnex.com.vn/lien-he/"
 
+# ---------------------------------------------------------------------------
+# Wave 2 (2026-09-03) -- more banks + non-bank credit institutions
+# (công ty tài chính tiêu dùng), same scope/checking discipline as above.
+#
+# Excluded after checking: SHB (shb.com.vn) -- robots.txt is permissive
+# (even has the new Cloudflare Content-Signal format, allows User-agent: *),
+# but the actual contact page returns HTTP 403 for BOTH our declared bot UA
+# AND a full browser UA -- a Cloudflare-level bot-fight block unrelated to
+# UA string, not something to work around (would require JS-challenge
+# solving / browser automation, which crosses into the evasion this
+# project's ethics section rules out).
+# ---------------------------------------------------------------------------
+
+  - name: "Agribank"
+    base_url: "https://www.agribank.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "State-owned bank, public official contact page (robots.txt has no rules -- unrestricted). Institutional numbers only."
+    urls:
+      - "https://www.agribank.com.vn/vn/lien-he"
+
+  - name: "ACB"
+    base_url: "https://acb.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official contact page (robots.txt allows this path). Institutional numbers only."
+    urls:
+      - "https://acb.com.vn/en/contact-us"
+
+  - name: "Sacombank"
+    base_url: "https://www.sacombank.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official contact page (robots.txt allows this path). Institutional numbers only."
+    urls:
+      - "https://www.sacombank.com.vn/en/home/contact-us.html"
+
+  - name: "Eximbank"
+    base_url: "https://eximbank.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official contact page (robots.txt allows this path). Institutional numbers only."
+    urls:
+      - "https://eximbank.com.vn/lien-he"
+
+  - name: "OCB"
+    base_url: "https://ocb.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official 24/7 customer service page (robots.txt: Allow: /). Institutional numbers only."
+    urls:
+      - "https://ocb.com.vn/vi/vi-dich-vu-cskh-24-7"
+
+  - name: "LPBank"
+    base_url: "https://lpbank.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official contact page (robots.txt allows this path). Institutional numbers only."
+    urls:
+      - "https://lpbank.com.vn/lien-he/"
+
+  - name: "MSB"
+    base_url: "https://www.msb.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official contact page (robots.txt: Disallow empty -- unrestricted). Institutional numbers only."
+    urls:
+      - "https://www.msb.com.vn/lien-he"
+
+  - name: "Nam A Bank"
+    base_url: "https://www.namabank.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official contact page. robots.txt returns 404 -- per RFC 9309 a 4xx (non-401/403) on robots.txt means unrestricted. Institutional numbers only."
+    urls:
+      - "https://www.namabank.com.vn/en-US/contacts"
+
+  - name: "FE Credit"
+    base_url: "https://www.fecredit.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Consumer finance company (VPBank subsidiary), public official contact page (robots.txt allows this path). Institutional numbers only."
+    urls:
+      - "https://www.fecredit.com.vn/lien-he/"
+
+  - name: "Home Credit Vietnam"
+    base_url: "https://www.homecredit.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Consumer finance company, public official contact page (robots.txt allows this path). Institutional numbers only."
+    urls:
+      - "https://www.homecredit.vn/lien-he"
+
+  - name: "HD Saison"
+    base_url: "https://www.hdsaison.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Consumer finance company (HDBank/Credit Saison JV), public official contact page (robots.txt allows this path). Institutional numbers only."
+    urls:
+      - "https://www.hdsaison.com.vn/vn/lien-he.html"
+

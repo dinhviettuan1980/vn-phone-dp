@@ -30,28 +30,29 @@ mất context giữa các phiên làm việc.*
   **FE tra cứu** tại **https://vn-phone.tuandv.id.vn** (nginx proxy `/api/*`,
   SSL certbot). Cả 2 cùng redeploy qua `~/deploy-vn-phone-dp.sh` (auto-deploy
   cron 2 phút trên VPS, xem `apps/web/`).
-- **29 nguồn dữ liệu** trong `services/crawler/config/sources.yaml` (3
-  fixture demo + 22 ngân hàng/tổ chức tín dụng + 4 cơ quan nhà nước) →
-  **196 số điện thoại thật** đã crawl (không tính fixture). Ưu tiên hiện tại
+- **36 nguồn dữ liệu** trong `services/crawler/config/sources.yaml` (3
+  fixture demo + 29 ngân hàng/tổ chức tín dụng + 4 cơ quan nhà nước) →
+  **255 số điện thoại thật** đã crawl (không tính fixture). Ưu tiên hiện tại
   theo yêu cầu user: **ngân hàng & tổ chức tín dụng trước (càng nhiều càng
   tốt), sau đó mới đến cơ quan chính phủ.**
-  - Đã crawl: Vietcombank, VietinBank, BIDV, Techcombank, VPBank, HDBank,
-    VIB, SeABank, MoMo, Cake, TNEX, Agribank, ACB, Sacombank, Eximbank, OCB,
-    LPBank, MSB, Nam A Bank, FE Credit, Home Credit, HD Saison (22 ngân
-    hàng/fintech/tổ chức tín dụng); SBV, Tổng cục Thuế, Bảo hiểm Xã hội,
-    Cổng Dịch vụ công Quốc gia (4 cơ quan nhà nước, mới bắt đầu).
-  - Loại trừ có chủ đích (chặn bot xác nhận, không spoof UA để né): MB Bank,
-    TPBank, Mcredit, SHB — xem comment đầu file `sources.yaml` để biết lý do
-    từng cái.
-  - **Việc tiếp theo**: tìm thêm ngân hàng/tổ chức tín dụng còn thiếu (vd
-    ABBank, BVBank, PVcomBank, VietABank, Bac A Bank, Kienlongbank,
-    Saigonbank, NCB, PGBank, VietBank, ngân hàng nước ngoài tại VN như HSBC/
-    Standard Chartered/Shinhan/Woori...), rồi mở rộng thêm cơ quan chính phủ
-    (Bộ Công an, Tổng cục Hải quan, Bộ Y tế...). WebSearch có giới hạn phiên
-    — nếu bị chặn, đợi reset rồi tiếp tục theo đúng quy trình: search trang
-    liên hệ chính thức → check robots.txt bằng UA thật của crawler → check
-    nội dung tĩnh có số điện thoại không → thêm vào `sources.yaml` → crawl
-    từ VPS → `npm run aggregate`.
+  - Đã crawl (29): Vietcombank, VietinBank, BIDV, Techcombank, VPBank,
+    HDBank, VIB, SeABank, MoMo, Cake, TNEX, Agribank, ACB, Sacombank,
+    Eximbank, OCB, LPBank, MSB, Nam A Bank, FE Credit, Home Credit,
+    HD Saison, BVBank, PVcomBank, VietABank, Bac A Bank, Kienlongbank,
+    Saigonbank, Vietbank; SBV, Tổng cục Thuế, Bảo hiểm Xã hội, Cổng Dịch vụ
+    công Quốc gia (4 cơ quan nhà nước, mới bắt đầu).
+  - Loại trừ có chủ đích (chặn bot xác nhận qua robots.txt và/hoặc trang
+    thật, không spoof UA/giải JS challenge để né): MB Bank, TPBank, Mcredit,
+    SHB, NCB, PGBank — xem comment đầu mỗi wave trong `sources.yaml` để biết
+    lý do từng cái.
+  - **Việc tiếp theo**: còn thiếu 1 số ngân hàng nhỏ (VietCredit, OceanBank,
+    GPBank, CBBank, ngân hàng nước ngoài tại VN như HSBC/Standard
+    Chartered/Shinhan/Woori/UOB/CIMB), rồi mở rộng thêm cơ quan chính phủ
+    (Bộ Công an, Tổng cục Hải quan, Bộ Y tế, EVN Điện lực...). WebSearch có
+    giới hạn phiên — nếu bị chặn, đợi reset rồi tiếp tục theo đúng quy
+    trình: search trang liên hệ chính thức → check robots.txt bằng UA thật
+    của crawler → check nội dung tĩnh có số điện thoại không → thêm vào
+    `sources.yaml` → crawl từ VPS → `npm run aggregate`.
 - **App iOS** (`apps/ios/`) đã viết xong + build thử thành công (simulator):
   SwiftUI app + CallKit Call Directory Extension, hiện tên ngân hàng khi có
   cuộc gọi đến (giống Truecaller/ViewCaller nhưng dùng data của mình).

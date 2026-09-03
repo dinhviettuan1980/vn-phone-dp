@@ -378,3 +378,91 @@ sources:
     urls:
       - "https://dichvucong.gov.vn/p/home/dvc-gioi-thieu.html"
 
+# ---------------------------------------------------------------------------
+# Wave 4 (2026-09-03) -- more banks/credit institutions, continuing "càng
+# nhiều càng tốt" per user priority. Same per-source robots.txt + UA check.
+#
+# Excluded after checking: NCB (ncb-bank.vn) and PGBank (pgbank.com.vn) --
+# both robots.txt AND the actual contact page return 403 (Cloudflare
+# "Attention Required" / Akamai "Access Denied" respectively), confirmed
+# with our real declared bot UA. Genuine bot-fight blocks, not UA-based --
+# not worked around.
+# ---------------------------------------------------------------------------
+
+  - name: "BVBank"
+    base_url: "https://bvbank.net.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official announcement of hotline numbers (robots.txt allows this path). Institutional numbers only."
+    urls:
+      - "https://bvbank.net.vn/tin-tuc/thong-bao-kenh-lien-he-cham-soc-khach-hang-tu-bvbank-goi-den-khach-hang/"
+
+  - name: "PVcomBank"
+    base_url: "https://www.pvcombank.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official contact page (robots.txt: Allow: /). Institutional numbers only."
+    urls:
+      - "https://www.pvcombank.com.vn/lien-he"
+
+  - name: "VietABank"
+    base_url: "https://vietabank.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official contact page (robots.txt: Allow: /). Institutional numbers only."
+    urls:
+      - "https://vietabank.com.vn/trung-tam-cskh-24-7/gioi-thieu-trung-tam.html"
+
+  - name: "Bac A Bank"
+    base_url: "https://www.baca-bank.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official homepage, hotline in footer (robots.txt only restricts SharePoint system paths). Institutional numbers only."
+    urls:
+      - "https://www.baca-bank.vn/"
+
+  - name: "Kienlongbank"
+    base_url: "https://kienlongbank.com"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official contact page (robots.txt: allow: /). Institutional numbers only."
+    urls:
+      - "https://kienlongbank.com/lien-he-8"
+
+  - name: "Saigonbank"
+    base_url: "https://www.saigonbank.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official support page (robots.txt allows this path). Institutional numbers only."
+    urls:
+      - "https://www.saigonbank.com.vn/vi/support"
+
+  - name: "Vietbank"
+    base_url: "https://www.vietbank.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Public official contact page (robots.txt allows this path). Institutional numbers only."
+    urls:
+      - "https://www.vietbank.com.vn/ve-vietbank/lien-he"
+

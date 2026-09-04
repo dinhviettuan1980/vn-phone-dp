@@ -80,10 +80,24 @@ nhiều càng tốt), sau đó mới đến cơ quan chính phủ.**
 - `GET /sources` — thống kê theo từng nguồn.
 - `GET /export/call-directory` — xuất toàn bộ danh bạ (số + nhãn tốt nhất)
   dạng E.164 sắp xếp tăng dần, dùng riêng cho app iOS nạp vào CallKit.
+- `POST /call-logs/import` — nhập 1 batch cuộc gọi thủ công (`call_date` +
+  danh sách `{phone_raw, call_count}`), đối chiếu ngay với DB, trả về biết/
+  chưa biết từng số. Bảng riêng `personal_call_logs`, KHÔNG nằm trong chuỗi
+  provenance raw_documents/phone_observations (đây là dữ liệu cá nhân người
+  dùng tự nhập, không phải evidence công khai) — xem
+  `database/migrations/0002_personal_call_logs.sql`.
+- `GET /call-logs/summary?from=&to=` — tổng kết theo số trong khoảng thời
+  gian, gộp theo số, kèm tổng số lần gọi/số ngày/nhận diện được hay chưa.
+- `GET /call-logs/unknown` — danh sách số đã xuất hiện trong nhật ký cuộc
+  gọi nhưng chưa có identity nào trong DB, sắp theo số lần gọi giảm dần
+  (danh sách "cần tìm hiểu").
 
-**FE web** (`apps/web/`, tại vn-phone.tuandv.id.vn): trang tra cứu 1 ô
-tìm kiếm đơn giản, không build step (HTML/CSS/JS thuần), gọi thẳng API
-cùng domain (không cần CORS).
+**FE web** (`apps/web/`, tại vn-phone.tuandv.id.vn): không build step
+(HTML/CSS/JS thuần), gọi thẳng API cùng domain (không cần CORS). 2 tab:
+- **Tra cứu**: 1 ô tìm kiếm số điện thoại.
+- **Nhật ký cuộc gọi**: form dán/nhập danh sách số + số lần gọi cho 1 ngày
+  (vì iOS không cho app đọc lịch sử cuộc gọi — xem mục 4, bug/quyết định #7),
+  bảng tổng kết theo khoảng ngày, và bảng "số cần tìm hiểu".
 
 **App iOS** (`apps/ios/`, đã cài lên iPhone thật của Tuan): SwiftUI app +
 CallKit Call Directory Extension —
@@ -126,6 +140,21 @@ CallKit Call Directory Extension —
    hạn ở 1 account, giới hạn ~3 thiết bị/năm ở account khác) → chuyển sang
    team trả phí IMIP có sẵn quyền Developer, build thành công ngay, không
    bị giới hạn hết hạn app sau 7 ngày. Chi tiết: `apps/ios/README.md`.
+7. **iOS không có API nào để app bên thứ 3 đọc lịch sử cuộc gọi** (Recents),
+   kể cả quá khứ lẫn tự động theo dõi tương lai — giới hạn riêng tư của hệ
+   điều hành, không phải do cách code. Đã kiểm chứng trước khi xây (không
+   xây nhầm hướng): không có Shortcuts action, không có Screen Time API,
+   `CXCallDirectoryExtension` chỉ cung cấp nhãn CHO iOS chứ không nhận lại
+   thông tin cuộc gọi thật đã xảy ra, và chạy nền cố định giờ (vd 22h hàng
+   ngày) cũng không khả thi (iOS tự quyết định lúc nào cho background task
+   chạy). → Quyết định: tính năng "Nhật ký cuộc gọi" là **nhập thủ công**
+   (user tự chép từ Recents), không có phần tự động nào.
+8. Auto-deploy VPS từng bị treo ~7 phút ở bước `npm install` (0% CPU suốt,
+   không phải chậm mà là kẹt thật — nguyên nhân chưa rõ, có thể do resource
+   contention nhất thời trên VPS nhỏ). Xử lý: `pgrep -af 'npm install'` xem
+   PID, `kill <pid>`, xoá `/tmp/auto-deploy.lock`, chạy lại tay. Nếu gặp lại
+   dữ liệu FE/API mãi không cập nhật dù đã push, kiểm tra
+   `~/auto-deploy.log` + `ps aux | grep npm` trước khi nghi code có bug.
 
 ### 5. Nguyên tắc đang áp dụng khi thêm nguồn mới
 

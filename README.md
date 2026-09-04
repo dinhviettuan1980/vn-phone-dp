@@ -15,56 +15,97 @@ Raw data is never overwritten. A phone number can have many observations
 across many sources, and many (possibly conflicting) identity claims — see
 `docs/architecture.md` for why.
 
-## Trạng thái dự án (cập nhật gần nhất: 2026-09-03)
+## Trạng thái dự án (cập nhật gần nhất: 2026-09-04)
 
-*Đọc phần này trước nếu tiếp tục làm việc trên project — tóm tắt để không
-mất context giữa các phiên làm việc.*
+*Đọc phần này trước nếu tiếp tục làm việc trên project — tóm tắt đầy đủ để
+không mất context giữa các phiên làm việc.*
 
-**Việc đã xong:**
-- Phase 1 đầy đủ theo `IMPLEMENTATION_PLAN.md`: schema, normalizer, extractor,
-  crawler framework, aggregation, API, Docker Compose, seed pipeline, test.
-- Dev DB + production đều chạy trên VPS `103.163.216.32` (không dùng Docker
-  Postgres/local) — chi tiết trong `docs/architecture.md` mục "Remote dev
-  database".
-- API + FE đã deploy live: **API** pm2 `phoneintel-api` (port 8037 nội bộ),
-  **FE tra cứu** tại **https://vn-phone.tuandv.id.vn** (nginx proxy `/api/*`,
-  SSL certbot). Cả 2 cùng redeploy qua `~/deploy-vn-phone-dp.sh` (auto-deploy
-  cron 2 phút trên VPS, xem `apps/web/`).
-- **36 nguồn dữ liệu** trong `services/crawler/config/sources.yaml` (3
-  fixture demo + 29 ngân hàng/tổ chức tín dụng + 4 cơ quan nhà nước) →
-  **255 số điện thoại thật** đã crawl (không tính fixture). Ưu tiên hiện tại
-  theo yêu cầu user: **ngân hàng & tổ chức tín dụng trước (càng nhiều càng
-  tốt), sau đó mới đến cơ quan chính phủ.**
-  - Đã crawl (29): Vietcombank, VietinBank, BIDV, Techcombank, VPBank,
-    HDBank, VIB, SeABank, MoMo, Cake, TNEX, Agribank, ACB, Sacombank,
-    Eximbank, OCB, LPBank, MSB, Nam A Bank, FE Credit, Home Credit,
-    HD Saison, BVBank, PVcomBank, VietABank, Bac A Bank, Kienlongbank,
-    Saigonbank, Vietbank; SBV, Tổng cục Thuế, Bảo hiểm Xã hội, Cổng Dịch vụ
-    công Quốc gia (4 cơ quan nhà nước, mới bắt đầu).
-  - Loại trừ có chủ đích (chặn bot xác nhận qua robots.txt và/hoặc trang
-    thật, không spoof UA/giải JS challenge để né): MB Bank, TPBank, Mcredit,
-    SHB, NCB, PGBank — xem comment đầu mỗi wave trong `sources.yaml` để biết
-    lý do từng cái.
-  - **Việc tiếp theo**: còn thiếu 1 số ngân hàng nhỏ (VietCredit, OceanBank,
-    GPBank, CBBank, ngân hàng nước ngoài tại VN như HSBC/Standard
-    Chartered/Shinhan/Woori/UOB/CIMB), rồi mở rộng thêm cơ quan chính phủ
-    (Bộ Công an, Tổng cục Hải quan, Bộ Y tế, EVN Điện lực...). WebSearch có
-    giới hạn phiên — nếu bị chặn, đợi reset rồi tiếp tục theo đúng quy
-    trình: search trang liên hệ chính thức → check robots.txt bằng UA thật
-    của crawler → check nội dung tĩnh có số điện thoại không → thêm vào
-    `sources.yaml` → crawl từ VPS → `npm run aggregate`.
-- **App iOS** (`apps/ios/`) — SwiftUI app + CallKit Call Directory
-  Extension, hiện tên ngân hàng khi có cuộc gọi đến (giống Truecaller/
-  ViewCaller nhưng dùng data của mình). **Đã cài + chạy trên iPhone thật
-  của Tuan (2026-09-04)**, ký bằng team trả phí IMIP (không phải Personal
-  Team miễn phí — không bị giới hạn hết hạn 7 ngày). Build/cài/mở app đều
-  làm qua dòng lệnh (`xcodebuild` + `xcrun devicectl`), không cần Xcode
-  GUI. Còn lại: bật extension trong Cài đặt → Điện thoại → Chặn cuộc gọi &
-  Nhận diện (Apple bắt buộc thao tác tay). Chi tiết + lệnh đã dùng:
-  `apps/ios/README.md`.
+### 1. Hạ tầng đang chạy
 
-**Bug thật đã tìm + sửa trong lúc làm** (đáng nhớ vì có thể tái diễn dạng
-khác khi thêm nguồn mới):
+| Thành phần | Trạng thái | Chi tiết |
+|---|---|---|
+| Database | Live, production | Postgres 16 trên VPS `103.163.216.32`, DB `phoneintel`. Không dùng Docker/Postgres local — xem `docs/architecture.md` mục "Remote dev database". |
+| API | Live, pm2 `phoneintel-api` | Port nội bộ 8037 (127.0.0.1 only, không expose trực tiếp). |
+| FE tra cứu | Live, public | **https://vn-phone.tuandv.id.vn** — nginx proxy `/api/*` → API, SSL certbot (auto-renew). |
+| App iOS | Cài + chạy trên iPhone thật | Xem mục 4 bên dưới. |
+| **Cron/job tự động crawl** | **KHÔNG có** | Chỉ có `*/2 * * * * /home/pc1/auto-deploy.sh` (auto-deploy code khi push, không crawl). Mọi lần crawl từ trước đến nay đều là **chạy tay qua SSH** (`python -m jobs.crawl_worker --source "<tên>"` rồi `npm run aggregate`), không có lịch tự động. Muốn thêm cron crawl định kỳ thì phải làm riêng (chưa làm). |
+
+Deploy code (API + FE cùng lúc): push lên `main` → auto-deploy cron trong
+vòng ~2 phút tự `git pull` + build + `pm2 restart` + rsync FE
+(`~/deploy-vn-phone-dp.sh`).
+
+### 2. Dữ liệu hiện có
+
+**39 nguồn** trong `services/crawler/config/sources.yaml` (3 fixture demo +
+36 nguồn thật) → **256 số điện thoại thật** đã crawl, **142 số** đủ điều
+kiện xuất cho app iOS (lọc MOBILE/LANDLINE, loại hotline 1900/1800 vì đó là
+số khách hàng gọi TỚI chứ không phải số gọi ĐẾN khách hàng).
+
+Ưu tiên theo yêu cầu user: **ngân hàng & tổ chức tín dụng trước (càng
+nhiều càng tốt), sau đó mới đến cơ quan chính phủ.**
+
+- **32 ngân hàng/tổ chức tín dụng/fintech đã crawl**: Vietcombank,
+  VietinBank, BIDV, Techcombank, VPBank, HDBank, VIB, SeABank, MoMo, Cake,
+  TNEX, Agribank, ACB, Sacombank, Eximbank, OCB, LPBank, MSB, Nam A Bank,
+  FE Credit, Home Credit, HD Saison, BVBank, PVcomBank, VietABank,
+  Bac A Bank, Kienlongbank, Saigonbank, Vietbank, VietCredit, HSBC Vietnam,
+  Standard Chartered Vietnam.
+- **4 cơ quan nhà nước đã crawl** (mới bắt đầu, còn nhiều thiếu): SBV
+  (Ngân hàng Nhà nước), Tổng cục Thuế, Bảo hiểm Xã hội Việt Nam, Cổng Dịch
+  vụ công Quốc gia.
+- **Loại trừ có chủ đích** — không spoof UA/giải JS challenge để né, xem
+  comment đầu mỗi wave trong `sources.yaml` để biết lý do chi tiết từng cái:
+  - Chặn bot xác nhận (robots.txt và/hoặc trang thật trả 403 cho cả UA
+    thật lẫn browser UA): MB Bank, TPBank, Mcredit, SHB, NCB, PGBank,
+    GPBank (Incapsula).
+  - Lỗi kỹ thuật thật của site (không phải chính sách chặn): OceanBank
+    (server không phản hồi TCP từ 2 mạng khác nhau), Shinhan Bank Vietnam
+    (chain chứng chỉ TLS thiếu intermediate cert trên server họ — chỉ
+    "qua" trên macOS vì curl tự bù, không qua được từ VPS/Linux).
+- **Việc tiếp theo**: còn thiếu CBBank, ngân hàng nước ngoài khác (Woori,
+  UOB, CIMB, Public Bank...), rồi mở rộng cơ quan chính phủ (Bộ Công an,
+  Tổng cục Hải quan, Bộ Y tế, EVN Điện lực...). Quy trình khi thêm nguồn
+  mới: search trang liên hệ chính thức → check robots.txt bằng UA thật của
+  crawler → check nội dung tĩnh có số điện thoại không → thêm vào
+  `sources.yaml` → crawl từ VPS (chạy tay, không có cron) → `npm run aggregate`.
+
+### 3. Tính năng hiện có
+
+**API** (`https://vn-phone.tuandv.id.vn/api/v1/...`):
+- `GET /phones/:phone` — tra cứu 1 số, trả về loại số, thống kê, danh sách
+  identity candidates kèm độ tin cậy.
+- `GET /phones/search?q=` — tìm theo 1 phần số quốc gia.
+- `GET /stats` — số liệu chất lượng dữ liệu (raw docs, observations, số
+  duy nhất, tỷ lệ trùng nội dung, top nguồn...).
+- `GET /sources` — thống kê theo từng nguồn.
+- `GET /export/call-directory` — xuất toàn bộ danh bạ (số + nhãn tốt nhất)
+  dạng E.164 sắp xếp tăng dần, dùng riêng cho app iOS nạp vào CallKit.
+
+**FE web** (`apps/web/`, tại vn-phone.tuandv.id.vn): trang tra cứu 1 ô
+tìm kiếm đơn giản, không build step (HTML/CSS/JS thuần), gọi thẳng API
+cùng domain (không cần CORS).
+
+**App iOS** (`apps/ios/`, đã cài lên iPhone thật của Tuan): SwiftUI app +
+CallKit Call Directory Extension —
+- Nút "Đồng bộ dữ liệu ngay": tải toàn bộ danh bạ từ `/export/call-directory`,
+  lưu vào App Group container dùng chung với extension.
+- Khi có cuộc gọi đến (hoặc xem Lịch sử cuộc gọi) từ 1 trong 142 số: iOS tự
+  hiện **"Tra Số VN: <tên tổ chức>"** — hoàn toàn do iOS xử lý native, app
+  không cần đang chạy.
+- **Chưa có**: đồng bộ nền tự động (background refresh) — hiện phải tự mở
+  app bấm nút mỗi lần muốn cập nhật dữ liệu mới nhất.
+
+**CLI** (chạy tay qua SSH, không có lịch tự động):
+- `python -m jobs.crawl_worker --source "<tên>"` — crawl 1 nguồn.
+- `python -m jobs.crawl_worker --normalize-only` — trích xuất lại các
+  raw_documents chưa có observations.
+- `npm run aggregate -w @phoneintel/api` — chạy rule-based aggregation.
+- `npm run stats -w @phoneintel/api` / `python -m tools.data_stats` — xem
+  số liệu chất lượng dữ liệu.
+
+### 4. Bug thật đã tìm + sửa trong lúc làm
+
+Đáng nhớ vì có thể tái diễn dạng khác khi thêm nguồn/tính năng mới:
 1. `npm run build` (tsc thật) chưa từng được test — chỉ test qua
    vitest/tsx (esbuild, khoan dung hơn). Path mapping trỏ thẳng ra file .ts
    ngoài rootDir làm tsc fail. Fix: cho `packages/shared-types` build tsc
@@ -77,14 +118,25 @@ khác khi thêm nguồn mới):
    thay vì UA thật của crawler → một số CDN (MoMo, Cake) 403 UA mặc định
    trong khi vẫn cho UA thật của mình crawl bình thường → false "disallow".
    Fix: tự fetch robots.txt bằng UA thật, không dùng `rp.read()` mặc định.
+5. Máy Mac dev hết sạch dung lượng ổ đĩa giữa lúc build iOS (Xcode tích luỹ
+   ~112GB simulator runtime cũ) — khiến Bash tool lỗi ENOSPC ngay cả với
+   lệnh nhỏ nhất. Fix: `xcrun simctl runtime list` xem UUID, `xcrun simctl
+   runtime delete <UUID>` xoá bản cũ (giữ bản mới nhất).
+6. Signing app iOS: Personal Team miễn phí gặp 2 lỗi thật (credential hết
+   hạn ở 1 account, giới hạn ~3 thiết bị/năm ở account khác) → chuyển sang
+   team trả phí IMIP có sẵn quyền Developer, build thành công ngay, không
+   bị giới hạn hết hạn app sau 7 ngày. Chi tiết: `apps/ios/README.md`.
 
-**Quyết định/nguyên tắc đang áp dụng khi thêm nguồn mới** (xem
-`docs/architecture.md` mục "Privacy / scope guardrail"):
+### 5. Nguyên tắc đang áp dụng khi thêm nguồn mới
+
+Xem `docs/architecture.md` mục "Privacy / scope guardrail":
 - Chỉ crawl trang liên hệ/hotline CÔNG KHAI của tổ chức (không phải dữ liệu
   cá nhân) — ngân hàng, tổ chức tín dụng, cơ quan nhà nước.
 - Luôn check robots.txt bằng chính UA thật của crawler trước khi thêm.
 - Nếu trang chặn bot (403 dù UA thật, hoặc bot-fight/Cloudflare challenge cả
   browser UA) → loại trừ, KHÔNG spoof UA hay giải JS challenge để né.
+- Lỗi kỹ thuật thật (site sập, TLS cert hỏng) không phải là "chặn" — vẫn
+  loại trừ nhưng không cần cân nhắc đạo đức, chỉ là không truy cập được.
 - IP dev máy Mac có thể đổi bất chợt (đã gặp 2 lần) — nếu API/test báo lỗi
   "no pg_hba.conf entry", cần thêm IP mới vào `pg_hba.conf` trên VPS (xem
   `docs/architecture.md`).

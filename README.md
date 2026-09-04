@@ -53,11 +53,15 @@ mất context giữa các phiên làm việc.*
     trình: search trang liên hệ chính thức → check robots.txt bằng UA thật
     của crawler → check nội dung tĩnh có số điện thoại không → thêm vào
     `sources.yaml` → crawl từ VPS → `npm run aggregate`.
-- **App iOS** (`apps/ios/`) đã viết xong + build thử thành công (simulator):
-  SwiftUI app + CallKit Call Directory Extension, hiện tên ngân hàng khi có
-  cuộc gọi đến (giống Truecaller/ViewCaller nhưng dùng data của mình).
-  **CHƯA cài lên iPhone thật** — user sẽ tự làm sau (cần Xcode + cắm cáp +
-  chọn Apple ID cá nhân miễn phí). Hướng dẫn đầy đủ: `apps/ios/README.md`.
+- **App iOS** (`apps/ios/`) — SwiftUI app + CallKit Call Directory
+  Extension, hiện tên ngân hàng khi có cuộc gọi đến (giống Truecaller/
+  ViewCaller nhưng dùng data của mình). **Đã cài + chạy trên iPhone thật
+  của Tuan (2026-09-04)**, ký bằng team trả phí IMIP (không phải Personal
+  Team miễn phí — không bị giới hạn hết hạn 7 ngày). Build/cài/mở app đều
+  làm qua dòng lệnh (`xcodebuild` + `xcrun devicectl`), không cần Xcode
+  GUI. Còn lại: bật extension trong Cài đặt → Điện thoại → Chặn cuộc gọi &
+  Nhận diện (Apple bắt buộc thao tác tay). Chi tiết + lệnh đã dùng:
+  `apps/ios/README.md`.
 
 **Bug thật đã tìm + sửa trong lúc làm** (đáng nhớ vì có thể tái diễn dạng
 khác khi thêm nguồn mới):

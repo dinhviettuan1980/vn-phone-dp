@@ -162,3 +162,50 @@ run *alongside* the rule-based one without touching existing rows — the
 stops two different `claim_source` values from coexisting for the same
 phone. Raw observations are never discarded, so a smarter aggregator can
 always be re-run from scratch over the exact same evidence.
+
+## Phase 2: Data Acquisition Engine
+
+See `docs/PHASE2_IMPLEMENTATION_PLAN.md` for the full design. Summary of
+decisions made while building it:
+
+### Trust level gates auto-discovered data from the iOS export
+
+Domain discovery (`domain_discovery/discovery_service.py`) and dataset
+ingestion (`dataset_ingestion/dataset_service.py`) both create their
+`data_sources` row at `trust_level = 'MEDIUM'`, never `'HIGH'`. The
+`/api/v1/export/call-directory` query (what actually reaches a real
+iPhone's caller ID) only includes `trust_level = 'HIGH'` sources. This was
+found the hard way: an early version filtered by source *name* pattern
+(`'Fixture%'`), and a test domain-discovery run with a different name
+briefly appeared in the real export. Gating on `trust_level` instead means
+*any* future auto-acquired source is excluded by construction until a
+human manually reviews it and flips it to `HIGH` — not by remembering to
+name things a certain way.
+
+### Pre-existing sources default to `crawl_frequency = 'MANUAL'`
+
+`data_sources.crawl_frequency` drives the scheduler's periodic
+`DISCOVER_SITEMAP` job creation. The 36 sources hand-vetted in Phase 1
+(each one's specific contact-page URL individually checked against
+robots.txt) are set to `MANUAL` — the scheduler will keep recrawling their
+existing `crawl_targets` rows (that's desired, catches updated phone
+numbers), but will never automatically run sitemap discovery against them
+and expand scope beyond what was actually reviewed. Only sources created
+*through* the discovery flow default to `WEEKLY` — continuous monitoring
+is exactly what discovery-created sources are for.
+
+(This surfaced as a real bug during testing: applying `next_scheduled_at
+DEFAULT now()` to the migration meant every existing source was
+immediately "due," and the first scheduler run queued 43 discovery jobs
+against real banks before this default was corrected. Caught and fixed
+before the worker touched any real external site — see the migration and
+the fix commit for the full story.)
+
+### Job queue is cross-language, via Postgres, not RPC
+
+`crawl_jobs` is written to by both the Python worker (crawling, discovery,
+dataset ingestion) and the TS API (`POST /api/v1/discovery/domain` just
+inserts a row). Neither side calls the other directly — the shared table
+*is* the interface. This keeps the two runtimes decoupled the same way
+Phase 1's normalizer duplication does (two implementations of one spec,
+not one importing the other).

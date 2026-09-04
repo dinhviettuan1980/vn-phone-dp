@@ -1,4 +1,4 @@
-# Vietnam Phone Intelligence Data Platform (Phase 1)
+# Vietnam Phone Intelligence Data Platform (Phase 1 + Phase 2)
 
 A data platform, not a CRUD app. The asset is the **phone intelligence
 database + raw evidence + provenance** — not a UI. See
@@ -15,6 +15,53 @@ Raw data is never overwritten. A phone number can have many observations
 across many sources, and many (possibly conflicting) identity claims — see
 `docs/architecture.md` for why.
 
+## Phase 2 — Data Acquisition Engine (2026-09-04)
+
+Extends Phase 1 upstream, doesn't rewrite it — see
+`docs/PHASE2_IMPLEMENTATION_PLAN.md` for the full design and
+`docs/architecture.md` "Phase 2" section for the decisions made while
+building it (including a real leak bug found+fixed: auto-discovered data
+briefly reached the live iOS export before the fix).
+
+**New capabilities:**
+- **Job queue** (`crawl_jobs`, Postgres-backed, `FOR UPDATE SKIP LOCKED`) —
+  retry with exponential backoff, stale-lock recovery, priority ordering.
+- **Worker** (`python -m jobs.worker` / `npm run worker`) — claims jobs,
+  dispatches to CRAWL_URL/CRAWL_SOURCE/DISCOVER_DOMAIN/DISCOVER_SITEMAP/
+  INGEST_DATASET, reusing Phase 1's extraction pipeline verbatim.
+- **Scheduler** (`python -m jobs.scheduler` / `npm run scheduler`) — due
+  `crawl_targets` → CRAWL_URL jobs, due sources → DISCOVER_SITEMAP jobs.
+  Pre-existing (hand-vetted) sources default to `crawl_frequency = 'MANUAL'`
+  — auto-discovery never silently expands scope beyond what was reviewed
+  this session; only newly-discovered domains opt into periodic re-discovery.
+- **Domain discovery** (`python -m cli.discover_domain --domain <url>` /
+  `npm run discover`) — robots.txt `Sitemap:` + common-path fallback,
+  recursive sitemap index resolution (gzip supported), config-driven URL
+  relevance scoring (`services/crawler/config/url_scoring.yaml` — no
+  business logic hard-coded). Verified end-to-end against a demo fixture
+  domain: contact/lien-he/chi-nhanh pages score 80-100, products/blog score 10.
+- **Dataset ingestion** (`python -m cli.ingest_dataset --file data.csv
+  --source "<name>"` / `npm run ingest`) — CSV/XLSX/JSON, config-driven
+  phone-column detection (Vietnamese diacritic-aware, e.g. "Điện thoại" /
+  "SĐT"), each row → the SAME raw_document/phone_observation pipeline
+  Phase 1's HTML crawler uses. Idempotent on file checksum.
+- **Incremental crawling** — `HttpCollector.fetch()` now sends
+  If-None-Match/If-Modified-Since when available, handles 304, on top of
+  the existing content_hash dedup.
+- **Unknown Number Priority Queue** (`GET /api/v1/unknown-numbers/priority`)
+  — the manually-reported call log numbers with no known identity, ranked
+  by call volume + recency + repeat-day weighting.
+- **Acquisition API**: `POST /api/v1/discovery/domain`, `GET
+  /api/v1/acquisition/jobs[/:id]`, `GET /api/v1/acquisition/stats`, `GET
+  /api/v1/sources/:id/performance`.
+- **Tests**: 67 Python tests (sitemap parsing, URL scoring, column
+  detection, job queue atomicity/retry/stale-recovery against the real DB).
+
+**Not run continuously yet**: scheduler/worker are CLI commands, not a
+cron/pm2 process on the VPS — same "no automated crawl job" state Phase 1
+left, now with the tooling to turn it on when wanted (see acquisition
+stats to decide when).
+
 ## Trạng thái dự án (cập nhật gần nhất: 2026-09-04)
 
 *Đọc phần này trước nếu tiếp tục làm việc trên project — tóm tắt đầy đủ để
@@ -28,7 +75,7 @@ không mất context giữa các phiên làm việc.*
 | API | Live, pm2 `phoneintel-api` | Port nội bộ 8037 (127.0.0.1 only, không expose trực tiếp). |
 | FE tra cứu | Live, public | **https://vn-phone.tuandv.id.vn** — nginx proxy `/api/*` → API, SSL certbot (auto-renew). |
 | App iOS | Cài + chạy trên iPhone thật | Xem mục 4 bên dưới. |
-| **Cron/job tự động crawl** | **KHÔNG có** | Chỉ có `*/2 * * * * /home/pc1/auto-deploy.sh` (auto-deploy code khi push, không crawl). Mọi lần crawl từ trước đến nay đều là **chạy tay qua SSH** (`python -m jobs.crawl_worker --source "<tên>"` rồi `npm run aggregate`), không có lịch tự động. Muốn thêm cron crawl định kỳ thì phải làm riêng (chưa làm). |
+| **Cron/job tự động crawl** | **KHÔNG có** (nhưng đã có tooling) | Chỉ có `*/2 * * * * /home/pc1/auto-deploy.sh` (auto-deploy code khi push, không crawl). Phase 2 đã xây job queue + scheduler + worker (`crawl_jobs`, `python -m jobs.scheduler`, `python -m jobs.worker`) nhưng **chưa gắn cron/pm2 chạy liên tục trên VPS** — vẫn phải tự chạy tay. Muốn bật tự động: thêm cron gọi 2 lệnh trên định kỳ. |
 
 Deploy code (API + FE cùng lúc): push lên `main` → auto-deploy cron trong
 vòng ~2 phút tự `git pull` + build + `pm2 restart` + rsync FE

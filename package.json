@@ -11,7 +11,12 @@
     "test": "npm run test -w @phoneintel/api",
     "aggregate": "npm run aggregate -w @phoneintel/api",
     "stats": "npm run stats -w @phoneintel/api",
-    "crawl": "python -m jobs.crawl_worker",
-    "normalize": "python -m jobs.crawl_worker --normalize-only"
+    "crawl": "cd services/crawler && python -m jobs.crawl_worker",
+    "normalize": "cd services/crawler && python -m jobs.crawl_worker --normalize-only",
+    "scheduler": "cd services/crawler && python -m jobs.scheduler",
+    "worker": "cd services/crawler && python -m jobs.worker",
+    "discover": "cd services/crawler && python -m cli.discover_domain",
+    "ingest": "cd services/crawler && python -m cli.ingest_dataset",
+    "acquisition:stats": "cd services/crawler && python -m tools.data_stats"
   }
 }

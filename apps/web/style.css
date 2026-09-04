@@ -434,3 +434,99 @@ body {
 .status-pill.PENDING,
 .status-pill.RETRY { background: #f4e9d4; color: var(--warn); }
 .status-pill.CANCELLED { background: var(--paper-2); color: var(--ink-3); }
+
+.status-pill.HEALTHY { background: var(--accent-soft); color: var(--accent-ink); }
+.status-pill.WARNING { background: #f4e9d4; color: var(--warn); }
+.status-pill.CRITICAL { background: #f6e4de; color: var(--danger); }
+
+.identities-title-flush {
+  margin-top: 0;
+}
+
+.stats-row-spaced {
+  margin-top: 16px;
+}
+
+.stats-row-spaced-sm {
+  margin-top: 12px;
+}
+
+.empty-note-spaced {
+  margin-top: 8px;
+}
+
+.card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+}
+
+/* Observation progress bar */
+.progress-track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+}
+
+/* Simple CSS bar chart -- no chart library, matches the confidence-bar technique */
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 90px;
+  margin-top: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.bar-chart-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  min-width: 4px;
+}
+
+.bar-chart-bar {
+  width: 100%;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+}
+
+.bar-chart-bar.warn { background: var(--warn); }
+.bar-chart-bar.danger { background: var(--danger); }
+
+.chart-range-btn,
+.resource-range-btn {
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: white;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+.chart-range-btn.active,
+.resource-range-btn.active {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border-color: var(--accent-ink);
+}
+
+.running-job-card {
+  border: 1px dashed var(--line-soft);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-top: 8px;
+  font-size: 0.82rem;
+}

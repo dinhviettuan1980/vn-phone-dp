@@ -178,9 +178,10 @@ tabButtons.forEach((btn) => {
       loadSummary();
       loadUnknown();
     }
-    if (btn.dataset.tab === "ops") {
-      loadOpsStats();
-      loadOpsJobs();
+    opsTabActive = btn.dataset.tab === "ops";
+    if (opsTabActive) {
+      loadOpsDashboard();
+      startOpsAutoRefresh();
     }
   });
 });
@@ -353,13 +354,18 @@ async function loadUnknown() {
 }
 
 // ---------------------------------------------------------------------
-// Operations (job queue) tab
+// Operations dashboard tab ("Vận hành")
 // ---------------------------------------------------------------------
 const opsStatusEl = document.getElementById("ops-status");
-const opsStatsRow = document.getElementById("ops-stats-row");
-const opsLiveness = document.getElementById("ops-liveness");
+const opsLastUpdated = document.getElementById("ops-last-updated");
 const opsJobsTableWrap = document.getElementById("ops-jobs-table-wrap");
 const opsRefreshBtn = document.getElementById("ops-refresh");
+
+let opsTabActive = false;
+let opsRefreshTimer = null;
+let growthChartRange = "24h";
+let resourceChartRange = "24h";
+const REFRESH_SECONDS = 60; // MONITORING_DASHBOARD_REFRESH_SECONDS default
 
 function setOpsStatus(kind, message) {
   if (!message) {
@@ -371,30 +377,187 @@ function setOpsStatus(kind, message) {
   opsStatusEl.textContent = message;
 }
 
-async function loadOpsStats() {
+function formatDuration(seconds) {
+  if (seconds == null) return "—";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
+function formatBytes(bytes) {
+  if (bytes == null) return "—";
+  const gb = bytes / 1024 / 1024 / 1024;
+  return `${gb.toFixed(1)} GB`;
+}
+
+function renderBarChart(container, points, valueOf, maxValue, barClassOf) {
+  if (points.length === 0) {
+    container.innerHTML = `<p class="empty-note">Chưa có dữ liệu.</p>`;
+    return;
+  }
+  const max = maxValue ?? Math.max(1, ...points.map(valueOf));
+  container.innerHTML = points
+    .map((p) => {
+      const value = valueOf(p);
+      const heightPct = Math.max(2, Math.round((value / max) * 100));
+      const cls = barClassOf ? barClassOf(p) : "";
+      return `<div class="bar-chart-col" title="${escapeHtml(String(value))}"><div class="bar-chart-bar ${cls}" style="height:${heightPct}%"></div></div>`;
+    })
+    .join("");
+}
+
+async function loadObservationAndData(summary) {
+  const obs = summary.observation;
+  const progressPct = obs.target_seconds > 0 ? Math.min(100, Math.round((obs.elapsed_seconds / obs.target_seconds) * 100)) : 0;
+  document.getElementById("obs-progress-wrap").innerHTML = obs.started_at
+    ? `<div class="progress-track"><div class="progress-fill" style="width:${progressPct}%"></div></div>`
+    : `<p class="empty-note">Chưa bắt đầu chu kỳ quan sát (OBSERVATION_STARTED_AT chưa được đặt).</p>`;
+  document.getElementById("obs-stats-row").innerHTML = `
+    <div><span class="stat-value">${obs.started_at ? formatDate(obs.started_at) : "—"}</span>Bắt đầu</div>
+    <div><span class="stat-value">${formatDuration(obs.elapsed_seconds)}</span>Đã trôi qua</div>
+    <div><span class="stat-value">${formatDuration(obs.target_seconds)}</span>Mục tiêu</div>
+    <div><span class="stat-value">${formatDuration(obs.remaining_seconds)}</span>Còn lại</div>
+  `;
+
+  const data = summary.data;
+  document.getElementById("data-total").textContent = data.total_numbers.toLocaleString("vi-VN");
+  document.getElementById("data-added-row").innerHTML = `
+    <div><span class="stat-value">+${data.added["1h"]}</span>1 giờ</div>
+    <div><span class="stat-value">+${data.added["3h"]}</span>3 giờ</div>
+    <div><span class="stat-value">+${data.added["6h"]}</span>6 giờ</div>
+    <div><span class="stat-value">+${data.added["9h"]}</span>9 giờ</div>
+    <div><span class="stat-value">+${data.added["12h"]}</span>12 giờ</div>
+    <div><span class="stat-value">+${data.added["24h"]}</span>24 giờ</div>
+    <div><span class="stat-value">+${data.added.observation}</span>Từ khi quan sát</div>
+  `;
+}
+
+async function loadGrowthChart() {
+  const container = document.getElementById("growth-chart");
   try {
-    const res = await fetch("/api/v1/acquisition/job-stats");
+    const res = await fetch(`/api/v1/monitoring/data-growth?window=${growthChartRange}`);
     if (!res.ok) throw new Error("bad response");
     const data = await res.json();
-
-    opsStatsRow.innerHTML = `
-      <div><span class="stat-value">${data.by_status.PENDING}</span>Đang chờ</div>
-      <div><span class="stat-value">${data.by_status.RUNNING}</span>Đang chạy</div>
-      <div><span class="stat-value">${data.by_status.RETRY}</span>Chờ thử lại</div>
-      <div><span class="stat-value">${data.last_24h.completed}</span>Hoàn thành (24h)</div>
-      <div><span class="stat-value">${data.last_24h.failed}</span>Thất bại (24h)</div>
-    `;
-    opsLiveness.textContent = data.last_job_started_at
-      ? `Job gần nhất bắt đầu lúc: ${formatDate(data.last_job_started_at)} (không phải health-check thời gian thực -- chỉ là bằng chứng gần nhất worker đã chạy)`
-      : "Chưa có job nào từng chạy.";
-    setOpsStatus(null);
+    renderBarChart(container, data.series, (p) => p.count);
   } catch (err) {
-    setOpsStatus("error", "Không tải được trạng thái hàng đợi.");
+    container.innerHTML = `<p class="empty-note">Không tải được biểu đồ.</p>`;
+  }
+}
+
+function loadPipeline(summary) {
+  const jobs = summary.jobs;
+  document.getElementById("pipeline-stats-row").innerHTML = `
+    <div><span class="stat-value">${jobs.pending}</span>Đang chờ</div>
+    <div><span class="stat-value">${jobs.running}</span>Đang chạy</div>
+    <div><span class="stat-value">${jobs.completed}</span>Hoàn thành</div>
+    <div><span class="stat-value">${jobs.failed}</span>Thất bại</div>
+  `;
+  document.getElementById("throughput-stats-row").innerHTML = `
+    <div><span class="stat-value">${jobs.completed_1h}</span>Xong (1h)</div>
+    <div><span class="stat-value">${jobs.completed_6h}</span>Xong (6h)</div>
+    <div><span class="stat-value">${jobs.completed_24h}</span>Xong (24h)</div>
+    <div><span class="stat-value">${jobs.average_duration_seconds}s</span>Thời gian TB</div>
+    <div><span class="stat-value">${jobs.failed_1h}</span>Lỗi (1h)</div>
+    <div><span class="stat-value">${jobs.failed_24h}</span>Lỗi (24h)</div>
+  `;
+}
+
+async function loadRunningJobs() {
+  const wrap = document.getElementById("running-jobs-wrap");
+  try {
+    const res = await fetch("/api/v1/monitoring/jobs");
+    if (!res.ok) throw new Error("bad response");
+    const data = await res.json();
+    if (data.running.length === 0) {
+      wrap.innerHTML = `<p class="empty-note">Không có job nào đang chạy.</p>`;
+      return;
+    }
+    wrap.innerHTML = data.running
+      .map(
+        (j) => `
+        <div class="running-job-card">
+          <strong>#${escapeHtml(String(j.id).slice(0, 8))}</strong> — ${escapeHtml(j.sourceName || j.jobType)}
+          <div class="identity-meta">
+            <span>Bắt đầu: ${formatDate(j.startedAt)}</span>
+            <span>Đang chạy: ${formatDuration(j.durationSeconds)}</span>
+            <span>Lần thử: ${j.attemptCount}/${j.maxAttempts}</span>
+          </div>
+        </div>`
+      )
+      .join("");
+  } catch (err) {
+    wrap.innerHTML = `<p class="empty-note">Không tải được dữ liệu.</p>`;
+  }
+}
+
+function loadQueueHealth(summary) {
+  const queue = summary.queue;
+  const badge = document.getElementById("queue-status-badge");
+  badge.textContent = queue.status;
+  badge.className = `badge status-pill ${queue.status}`;
+
+  const notes = {
+    HEALTHY: "Hàng đợi đang được xử lý bình thường.",
+    WARNING: "Job đang tồn đọng, cần theo dõi.",
+    CRITICAL: "Hàng đợi tồn đọng nhiều hoặc job chờ quá lâu.",
+  };
+  document.getElementById("queue-status-note").textContent = notes[queue.status] || "";
+
+  document.getElementById("queue-stats-row").innerHTML = `
+    <div><span class="stat-value">${queue.pending}</span>Job chờ</div>
+    <div><span class="stat-value">${queue.running}</span>Job chạy</div>
+    <div><span class="stat-value">${formatDuration(queue.oldest_pending_age_seconds)}</span>Job chờ lâu nhất</div>
+    <div><span class="stat-value">${queue.failed_24h}</span>Lỗi (24h)</div>
+  `;
+}
+
+function loadVpsResources(summary) {
+  const sys = summary.system;
+  const wrap = document.getElementById("vps-stats-row");
+  if (!sys) {
+    wrap.innerHTML = `<p class="empty-note">Chưa có dữ liệu metrics collector (system-metrics.service).</p>`;
+    return;
+  }
+  const memUsedPct = sys.memory_total_bytes > 0 ? Math.round(((sys.memory_total_bytes - sys.memory_available_bytes) / sys.memory_total_bytes) * 100) : 0;
+  const diskUsedPct = sys.disk_total_bytes > 0 ? Math.round(((sys.disk_total_bytes - sys.disk_available_bytes) / sys.disk_total_bytes) * 100) : 0;
+  wrap.innerHTML = `
+    <div><span class="stat-value">${sys.cpu_percent != null ? sys.cpu_percent + "%" : "—"}</span>CPU</div>
+    <div><span class="stat-value">${sys.load_1 ?? "—"}</span>Load 1m</div>
+    <div><span class="stat-value">${formatBytes(sys.memory_total_bytes - sys.memory_available_bytes)} / ${formatBytes(sys.memory_total_bytes)}</span>RAM (${memUsedPct}%)</div>
+    <div><span class="stat-value">${formatBytes(sys.disk_total_bytes - sys.disk_available_bytes)} / ${formatBytes(sys.disk_total_bytes)}</span>Disk (${diskUsedPct}%)</div>
+  `;
+}
+
+async function loadResourceCharts() {
+  const cpuContainer = document.getElementById("resource-chart-cpu");
+  const memContainer = document.getElementById("resource-chart-mem");
+  try {
+    const res = await fetch(`/api/v1/monitoring/system-metrics?window=${resourceChartRange}`);
+    if (!res.ok) throw new Error("bad response");
+    const data = await res.json();
+    renderBarChart(
+      cpuContainer,
+      data.snapshots,
+      (p) => (p.cpu_percent != null ? p.cpu_percent : 0),
+      100,
+      (p) => (p.cpu_percent >= 80 ? "danger" : p.cpu_percent >= 50 ? "warn" : "")
+    );
+    renderBarChart(
+      memContainer,
+      data.snapshots,
+      (p) => (p.memory_total_bytes > 0 ? Math.round((p.memory_available_bytes / p.memory_total_bytes) * 100) : 0),
+      100
+    );
+  } catch (err) {
+    cpuContainer.innerHTML = `<p class="empty-note">Không tải được biểu đồ.</p>`;
+    memContainer.innerHTML = "";
   }
 }
 
 async function loadOpsJobs() {
-  opsJobsTableWrap.innerHTML = `<p class="empty-note">Đang tải…</p>`;
   try {
     const res = await fetch("/api/v1/acquisition/jobs?limit=20");
     if (!res.ok) throw new Error("bad response");
@@ -417,7 +580,53 @@ async function loadOpsJobs() {
   }
 }
 
-opsRefreshBtn.addEventListener("click", () => {
-  loadOpsStats();
+async function loadOpsDashboard() {
+  try {
+    const res = await fetch("/api/v1/monitoring/summary");
+    if (!res.ok) throw new Error("bad response");
+    const summary = await res.json();
+
+    loadObservationAndData(summary);
+    loadPipeline(summary);
+    loadQueueHealth(summary);
+    loadVpsResources(summary);
+
+    setOpsStatus(null);
+    opsLastUpdated.textContent = `Cập nhật lần cuối: ${new Date().toLocaleTimeString("vi-VN")}`;
+  } catch (err) {
+    // Keep whatever was last rendered on screen -- don't blank the dashboard.
+    setOpsStatus("error", "Không tải được dữ liệu mới nhất, đang hiển thị dữ liệu cũ.");
+  }
+
+  loadGrowthChart();
+  loadRunningJobs();
+  loadResourceCharts();
   loadOpsJobs();
+}
+
+document.querySelectorAll(".chart-range-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".chart-range-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    growthChartRange = btn.dataset.range;
+    loadGrowthChart();
+  });
 });
+
+document.querySelectorAll(".resource-range-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".resource-range-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    resourceChartRange = btn.dataset.range;
+    loadResourceCharts();
+  });
+});
+
+opsRefreshBtn.addEventListener("click", loadOpsDashboard);
+
+function startOpsAutoRefresh() {
+  if (opsRefreshTimer) return;
+  opsRefreshTimer = setInterval(() => {
+    if (opsTabActive) loadOpsDashboard();
+  }, REFRESH_SECONDS * 1000);
+}

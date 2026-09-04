@@ -275,6 +275,25 @@ def update_dataset_progress(conn: psycopg.Connection, dataset_id: str, processed
     conn.commit()
 
 
+def insert_system_metrics_snapshot(conn: psycopg.Connection, snapshot) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO system_metrics
+                (cpu_percent, load_1, load_5, load_15,
+                 memory_total_bytes, memory_available_bytes,
+                 disk_total_bytes, disk_available_bytes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                snapshot.cpu_percent, snapshot.load_1, snapshot.load_5, snapshot.load_15,
+                snapshot.memory_total_bytes, snapshot.memory_available_bytes,
+                snapshot.disk_total_bytes, snapshot.disk_available_bytes,
+            ),
+        )
+    conn.commit()
+
+
 def upsert_phone_number(conn: psycopg.Connection, phone_e164: str, country_code: str, national_number: str, phone_type: str) -> str:
     with conn.cursor() as cur:
         cur.execute(

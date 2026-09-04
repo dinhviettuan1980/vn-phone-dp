@@ -119,22 +119,93 @@
 
     <section id="tab-ops" class="tab-panel" hidden>
       <p class="hint">
-        Trạng thái hàng đợi crawl job (scheduler + worker chạy nền trên VPS).
-        Trang này chỉ hiển thị, không có thao tác điều khiển worker.
+        Theo dõi vận hành hệ thống thu thập dữ liệu thật đang chạy liên tục trên
+        VPS (scheduler + worker + metrics collector). Trang này chỉ hiển thị,
+        không có thao tác điều khiển.
       </p>
 
       <div id="ops-status" class="status" hidden></div>
 
-      <div class="result-card">
-        <div id="ops-stats-row" class="stats-row"></div>
-        <p id="ops-liveness" class="empty-note ops-liveness"></p>
+      <div class="section-header">
+        <span></span>
+        <button id="ops-refresh" type="button" class="ops-refresh-btn">Làm mới</button>
       </div>
+      <p id="ops-last-updated" class="empty-note"></p>
+
+      <!-- Observation header -->
+      <div class="result-card">
+        <h2 class="identities-title identities-title-flush">Chu kỳ quan sát (Observation Period)</h2>
+        <div id="obs-progress-wrap"></div>
+        <div id="obs-stats-row" class="stats-row"></div>
+      </div>
+
+      <hr class="divider" />
+
+      <!-- Data growth -->
+      <h2 class="identities-title">Tăng trưởng dữ liệu</h2>
+      <div class="result-card">
+        <div class="phone-row">
+          <span id="data-total" class="phone-number">—</span>
+          <span class="badge">Tổng số production</span>
+        </div>
+        <div id="data-added-row" class="stats-row stats-row-spaced"></div>
+      </div>
+
+      <div class="section-header">
+        <h2 class="identities-title">Biểu đồ theo giờ</h2>
+        <div class="summary-form">
+          <button type="button" class="chart-range-btn active" data-range="24h">24h</button>
+          <button type="button" class="chart-range-btn" data-range="72h">72h</button>
+        </div>
+      </div>
+      <div id="growth-chart" class="bar-chart"></div>
+
+      <hr class="divider" />
+
+      <!-- Job pipeline -->
+      <h2 class="identities-title">Pipeline job</h2>
+      <div id="pipeline-stats-row" class="stats-row card-grid"></div>
+
+      <h2 class="identities-title">Job đang chạy</h2>
+      <div id="running-jobs-wrap"></div>
+
+      <h2 class="identities-title">Throughput worker</h2>
+      <div id="throughput-stats-row" class="stats-row"></div>
+
+      <hr class="divider" />
+
+      <!-- Queue health -->
+      <h2 class="identities-title">Sức khoẻ hàng đợi</h2>
+      <div class="result-card">
+        <div class="phone-row">
+          <span id="queue-status-badge" class="badge">—</span>
+          <span id="queue-status-note" class="empty-note"></span>
+        </div>
+        <div id="queue-stats-row" class="stats-row stats-row-spaced-sm"></div>
+      </div>
+
+      <hr class="divider" />
+
+      <!-- VPS resources -->
+      <h2 class="identities-title">Tài nguyên VPS</h2>
+      <div id="vps-stats-row" class="stats-row card-grid"></div>
+
+      <div class="section-header">
+        <h2 class="identities-title">Xu hướng tài nguyên</h2>
+        <div class="summary-form">
+          <button type="button" class="resource-range-btn" data-range="6h">6h</button>
+          <button type="button" class="resource-range-btn active" data-range="24h">24h</button>
+          <button type="button" class="resource-range-btn" data-range="72h">72h</button>
+        </div>
+      </div>
+      <div id="resource-chart-cpu" class="bar-chart"></div>
+      <p class="empty-note empty-note-spaced">RAM khả dụng (%)</p>
+      <div id="resource-chart-mem" class="bar-chart"></div>
 
       <hr class="divider" />
 
       <div class="section-header">
         <h2 class="identities-title">Job gần đây</h2>
-        <button id="ops-refresh" type="button" class="ops-refresh-btn">Làm mới</button>
       </div>
       <div id="ops-jobs-table-wrap"></div>
     </section>

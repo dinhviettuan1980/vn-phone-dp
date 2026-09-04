@@ -156,3 +156,193 @@ form.addEventListener("submit", (e) => {
   if (!query) return;
   lookupPhone(query);
 });
+
+// ---------------------------------------------------------------------
+// Tabs
+// ---------------------------------------------------------------------
+const tabButtons = document.querySelectorAll(".tab-btn");
+const tabPanels = {
+  lookup: document.getElementById("tab-lookup"),
+  calllog: document.getElementById("tab-calllog"),
+};
+
+tabButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    tabButtons.forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    Object.entries(tabPanels).forEach(([key, panel]) => {
+      panel.hidden = key !== btn.dataset.tab;
+    });
+    if (btn.dataset.tab === "calllog") {
+      loadSummary();
+      loadUnknown();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------
+// Call log import
+// ---------------------------------------------------------------------
+const importForm = document.getElementById("import-form");
+const callDateInput = document.getElementById("call-date");
+const callEntriesInput = document.getElementById("call-entries");
+const importStatus = document.getElementById("import-status");
+const importResult = document.getElementById("import-result");
+const importResultList = document.getElementById("import-result-list");
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+callDateInput.value = today();
+
+function parseCallLogLine(line) {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+  const match = trimmed.match(/^([+\d][\d\s.\-]*\d)\s*(?:[,xX*-]\s*(\d+))?\s*.*$/);
+  if (!match) return null;
+  const phone = match[1].replace(/\s+/g, " ").trim();
+  const count = match[2] ? parseInt(match[2], 10) : 1;
+  return { phone_raw: phone, call_count: count };
+}
+
+importForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const lines = callEntriesInput.value.split("\n");
+  const entries = lines.map(parseCallLogLine).filter(Boolean);
+
+  if (entries.length === 0) {
+    importStatus.hidden = false;
+    importStatus.className = "status error";
+    importStatus.textContent = "Không đọc được số nào, kiểm tra lại định dạng.";
+    return;
+  }
+
+  importStatus.hidden = false;
+  importStatus.className = "status loading";
+  importStatus.textContent = `Đang gửi ${entries.length} số…`;
+  importResult.hidden = true;
+
+  try {
+    const res = await fetch("/api/v1/call-logs/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ call_date: callDateInput.value, entries }),
+    });
+    if (!res.ok) throw new Error("bad response");
+    const data = await res.json();
+
+    importStatus.className = "status";
+    importStatus.textContent = `Đã lưu ${data.imported} số — biết ${data.known}, chưa biết ${data.unknown}.`;
+
+    importResultList.innerHTML = "";
+    for (const r of data.results) {
+      const li = document.createElement("li");
+      li.className = "identity-card";
+      li.innerHTML = `
+        <div class="identity-name">${escapeHtml(r.phoneRaw)}</div>
+        <div class="identity-meta">
+          <span>${r.known ? escapeHtml(r.identityName) : "Chưa biết"}</span>
+          ${!r.valid ? "<span>Định dạng không chắc chắn</span>" : ""}
+        </div>
+      `;
+      importResultList.appendChild(li);
+    }
+    importResult.hidden = false;
+    callEntriesInput.value = "";
+
+    loadSummary();
+    loadUnknown();
+  } catch (err) {
+    importStatus.className = "status error";
+    importStatus.textContent = "Gửi thất bại, thử lại sau.";
+  }
+});
+
+// ---------------------------------------------------------------------
+// Summary table
+// ---------------------------------------------------------------------
+const summaryForm = document.getElementById("summary-form");
+const summaryFromInput = document.getElementById("summary-from");
+const summaryToInput = document.getElementById("summary-to");
+const summaryTableWrap = document.getElementById("summary-table-wrap");
+
+function defaultFromDate() {
+  const d = new Date();
+  d.setDate(d.getDate() - 30);
+  return d.toISOString().slice(0, 10);
+}
+summaryFromInput.value = defaultFromDate();
+summaryToInput.value = today();
+
+function renderPhoneTable(container, rows, columns, emptyMessage) {
+  if (rows.length === 0) {
+    container.innerHTML = `<p class="empty-note">${emptyMessage}</p>`;
+    return;
+  }
+  const thead = `<tr>${columns.map((c) => `<th>${c.label}</th>`).join("")}</tr>`;
+  const tbody = rows
+    .map(
+      (row) =>
+        `<tr>${columns.map((c) => `<td class="${c.cellClass || ""}">${c.render(row)}</td>`).join("")}</tr>`
+    )
+    .join("");
+  container.innerHTML = `<div class="table-scroll"><table class="data-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
+}
+
+async function loadSummary() {
+  summaryTableWrap.innerHTML = `<p class="empty-note">Đang tải…</p>`;
+  try {
+    const res = await fetch(
+      `/api/v1/call-logs/summary?from=${summaryFromInput.value}&to=${summaryToInput.value}`
+    );
+    const data = await res.json();
+    renderPhoneTable(
+      summaryTableWrap,
+      data.entries,
+      [
+        { label: "Số", cellClass: "phone-cell", render: (r) => escapeHtml(r.phoneRaw) },
+        { label: "Số lần gọi", render: (r) => r.totalCalls },
+        { label: "Số ngày", render: (r) => r.daysCalled },
+        { label: "Lần gần nhất", render: (r) => r.lastCallDate },
+        {
+          label: "Nhận diện",
+          render: (r) => (r.known ? escapeHtml(r.identityName) : '<span class="badge invalid">Chưa biết</span>'),
+        },
+      ],
+      "Chưa có dữ liệu cuộc gọi trong khoảng thời gian này."
+    );
+  } catch (err) {
+    summaryTableWrap.innerHTML = `<p class="empty-note">Không tải được dữ liệu.</p>`;
+  }
+}
+
+summaryForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  loadSummary();
+});
+
+// ---------------------------------------------------------------------
+// Unknown numbers list
+// ---------------------------------------------------------------------
+const unknownTableWrap = document.getElementById("unknown-table-wrap");
+
+async function loadUnknown() {
+  unknownTableWrap.innerHTML = `<p class="empty-note">Đang tải…</p>`;
+  try {
+    const res = await fetch("/api/v1/call-logs/unknown");
+    const data = await res.json();
+    renderPhoneTable(
+      unknownTableWrap,
+      data.entries,
+      [
+        { label: "Số", cellClass: "phone-cell", render: (r) => escapeHtml(r.phoneRaw) },
+        { label: "Số lần gọi", render: (r) => r.totalCalls },
+        { label: "Số ngày", render: (r) => r.daysCalled },
+        { label: "Lần gần nhất", render: (r) => r.lastCallDate },
+      ],
+      "Không có số nào chưa xác định — tốt!"
+    );
+  } catch (err) {
+    unknownTableWrap.innerHTML = `<p class="empty-note">Không tải được dữ liệu.</p>`;
+  }
+}

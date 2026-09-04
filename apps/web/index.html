@@ -13,53 +13,117 @@
     <p class="subtitle">Vietnam Phone Intelligence Platform — bản demo giai đoạn 1</p>
   </header>
 
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="lookup">Tra cứu</button>
+    <button class="tab-btn" data-tab="calllog">Nhật ký cuộc gọi</button>
+  </nav>
+
   <main class="container">
-    <form id="search-form" class="search-box" autocomplete="off">
-      <input
-        id="phone-input"
-        type="tel"
-        inputmode="tel"
-        placeholder="Nhập số điện thoại, ví dụ: 1900545413"
-        aria-label="Số điện thoại cần tra cứu"
-        required
-      />
-      <button type="submit">Tra cứu</button>
-    </form>
 
-    <p class="hint">
-      Dữ liệu hiện tại chỉ gồm số hotline/tổng đài công khai từ website chính thức
-      của các ngân hàng &amp; fintech (Vietcombank, BIDV, VietinBank, Techcombank,
-      VPBank, HDBank, VIB, SeABank, MoMo, Cake, TNEX...). Đây là bản demo giai đoạn 1,
-      chưa bao phủ số cá nhân.
-    </p>
+    <section id="tab-lookup" class="tab-panel">
+      <form id="search-form" class="search-box" autocomplete="off">
+        <input
+          id="phone-input"
+          type="tel"
+          inputmode="tel"
+          placeholder="Nhập số điện thoại, ví dụ: 1900545413"
+          aria-label="Số điện thoại cần tra cứu"
+          required
+        />
+        <button type="submit">Tra cứu</button>
+      </form>
 
-    <div id="status" class="status" hidden></div>
+      <p class="hint">
+        Dữ liệu hiện tại chỉ gồm số hotline/tổng đài công khai từ website chính thức
+        của các ngân hàng &amp; fintech (Vietcombank, BIDV, VietinBank, Techcombank,
+        VPBank, HDBank, VIB, SeABank, MoMo, Cake, TNEX...). Đây là bản demo giai đoạn 1,
+        chưa bao phủ số cá nhân.
+      </p>
 
-    <section id="result" class="result" hidden>
-      <div class="result-card">
-        <div class="phone-row">
-          <span id="result-phone" class="phone-number"></span>
-          <span id="result-type" class="badge"></span>
-          <span id="result-valid" class="badge"></span>
+      <div id="status" class="status" hidden></div>
+
+      <section id="result" class="result" hidden>
+        <div class="result-card">
+          <div class="phone-row">
+            <span id="result-phone" class="phone-number"></span>
+            <span id="result-type" class="badge"></span>
+            <span id="result-valid" class="badge"></span>
+          </div>
+
+          <div id="stats-row" class="stats-row"></div>
         </div>
 
-        <div id="stats-row" class="stats-row"></div>
+        <h2 class="identities-title">Thông tin nhận diện</h2>
+        <ul id="identities-list" class="identities-list"></ul>
+        <p id="no-identities" class="empty-note" hidden>
+          Chưa có thông tin nhận diện nào cho số này (đã ghi nhận số, nhưng chưa xác
+          định được chủ thể).
+        </p>
+      </section>
+    </section>
+
+    <section id="tab-calllog" class="tab-panel" hidden>
+      <p class="hint">
+        iOS không cho phép app đọc lịch sử cuộc gọi (giới hạn của hệ điều hành,
+        không phải app này) — nên đây là màn hình <strong>nhập thủ công</strong>.
+        Xem lại Lịch sử cuộc gọi trên điện thoại, chép/gõ lại số + số lần gọi trong
+        1 ngày, dán vào ô bên dưới rồi bấm Gửi. Hệ thống sẽ tự đối chiếu với cơ sở
+        dữ liệu để biết số nào đã xác định được, số nào chưa.
+      </p>
+
+      <form id="import-form" class="import-form">
+        <label for="call-date">Ngày các cuộc gọi này diễn ra</label>
+        <input id="call-date" type="date" required />
+
+        <label for="call-entries">
+          Danh sách số (mỗi dòng 1 số, có thể thêm số lần gọi: <code>0912345678 x3</code>
+          hoặc <code>0912345678, 3</code> — không ghi số lần thì mặc định là 1)
+        </label>
+        <textarea
+          id="call-entries"
+          rows="8"
+          placeholder="0912345678 x2&#10;0987654321&#10;0977111222, 5"
+          required
+        ></textarea>
+
+        <button type="submit">Gửi tổng kết</button>
+      </form>
+
+      <div id="import-status" class="status" hidden></div>
+
+      <div id="import-result" class="result-card" hidden>
+        <h2 class="identities-title">Kết quả đối chiếu</h2>
+        <ul id="import-result-list" class="identities-list"></ul>
       </div>
 
-      <h2 class="identities-title">Thông tin nhận diện</h2>
-      <ul id="identities-list" class="identities-list"></ul>
-      <p id="no-identities" class="empty-note" hidden>
-        Chưa có thông tin nhận diện nào cho số này (đã ghi nhận số, nhưng chưa xác
-        định được chủ thể).
-      </p>
+      <hr class="divider" />
+
+      <div class="section-header">
+        <h2 class="identities-title">Tổng kết theo khoảng thời gian</h2>
+        <form id="summary-form" class="summary-form" autocomplete="off">
+          <label for="summary-from">Từ</label>
+          <input id="summary-from" type="date" />
+          <label for="summary-to">Đến</label>
+          <input id="summary-to" type="date" />
+          <button type="submit">Xem</button>
+        </form>
+      </div>
+      <div id="summary-table-wrap"></div>
+
+      <hr class="divider" />
+
+      <h2 class="identities-title">Số cần tìm hiểu (chưa xác định được là ai)</h2>
+      <div id="unknown-table-wrap"></div>
     </section>
+
   </main>
 
   <footer class="footer">
     <p>
       Vietnam Phone Intelligence Platform — Phase 1 demo. Dữ liệu thu thập từ
       nguồn công khai (website chính thức của tổ chức), không thu thập dữ liệu cá
-      nhân. Xem <a href="https://github.com/dinhviettuan1980/vn-phone-dp" target="_blank" rel="noopener">mã nguồn</a>.
+      nhân. Nhật ký cuộc gọi là dữ liệu bạn tự nhập, chỉ lưu trên server riêng của
+      bạn. Xem <a href="https://github.com/dinhviettuan1980/vn-phone-dp" target="_blank" rel="noopener">mã nguồn</a>.
     </p>
   </footer>
 

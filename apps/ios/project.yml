@@ -10,7 +10,7 @@ settings:
     SWIFT_VERSION: 5.0
     MARKETING_VERSION: 1.0.0
     CURRENT_PROJECT_VERSION: 1
-    DEVELOPMENT_TEAM: ""   # set your Apple Developer Team ID here, or leave blank and pick it in Xcode's Signing & Capabilities tab
+    DEVELOPMENT_TEAM: "GXSFH7K2X5"   # IMIP TECHNOLOGY AND SOLUTION CONSULTANCY JOINT STOCK COMPANY (paid team, tuandv@gmail.com has Developer role)
     CODE_SIGN_STYLE: Automatic
 
 targets:

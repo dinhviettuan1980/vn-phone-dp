@@ -18,36 +18,67 @@ nạp sẵn trên máy trước đó. Vì vậy:
    **"Tra Số VN: <nhãn>"** cạnh số điện thoại — hoàn toàn do iOS xử lý,
    không cần app đang chạy.
 
-## Build & cài lên iPhone (Apple ID cá nhân, miễn phí)
+## Trạng thái hiện tại (2026-09-04)
+
+**Đã cài thành công lên iPhone của Tuan** (iPhone 13 Pro Max), ký bằng
+team trả phí **IMIP TECHNOLOGY AND SOLUTION CONSULTANCY JOINT STOCK
+COMPANY** (`DEVELOPMENT_TEAM: GXSFH7K2X5` trong `project.yml`, Apple ID
+`tuandv@gmail.com` có role Developer ở team này) — **không phải** Personal
+Team miễn phí, nên **không bị giới hạn hết hạn 7 ngày**.
+
+Toàn bộ build + cài + mở app đã làm qua dòng lệnh (`xcodebuild` +
+`xcrun devicectl`), không cần mở Xcode GUI. Việc duy nhất còn lại luôn cần
+thao tác tay trên máy (Apple bắt buộc, không tự động hoá được): bật
+extension trong **Cài đặt → Điện thoại → Chặn cuộc gọi & Nhận diện → Tra
+Số VN**.
+
+**Lưu ý về signing đã thử qua** (để nhớ nếu cần build lại):
+- Personal Team miễn phí của `tuan.dinhviet1980@gmail.com`: bị lỗi
+  "missing Xcode-Token" (credential hết hạn trong keychain).
+- Personal Team miễn phí của `tuandv@gmail.com`: bị lỗi "reached the
+  maximum number of registered iPhone devices" (giới hạn ~3 thiết bị/năm
+  của free account).
+- → Chuyển sang team **IMIP** (trả phí, đã có sẵn quyền Developer) — build
+  thành công ngay.
+
+## Build & cài lên iPhone qua dòng lệnh (đã dùng thành công)
 
 ```bash
-brew install xcodegen   # nếu chưa có
 cd apps/ios
 xcodegen generate
-open PhoneIntel.xcodeproj
+
+# Build cho thiết bị thật (thay device id bằng của bạn, xem qua `xcrun xctrace list devices`)
+xcodebuild -project PhoneIntel.xcodeproj -scheme PhoneIntel \
+  -destination 'id=<DEVICE_ID>' -allowProvisioningUpdates build
+
+# Cài lên máy
+APP_PATH="$(find ~/Library/Developer/Xcode/DerivedData -name PhoneIntel.app -path '*Debug-iphoneos*' | head -1)"
+xcrun devicectl device install app --device <DEVICE_ID> "$APP_PATH"
+
+# Mở app
+xcrun devicectl device process launch --device <DEVICE_ID> id.vn.tuandv.phoneintel
 ```
 
-Trong Xcode:
+Yêu cầu: `DEVELOPMENT_TEAM` trong `project.yml` phải là team ID hợp lệ mà
+Apple ID đang đăng nhập trong Xcode (Settings → Apple Accounts) có quyền
+truy cập — lấy team ID qua:
+```bash
+plutil -p ~/Library/Preferences/com.apple.dt.Xcode.plist | grep -B3 -A3 "<tên team>"
+```
 
-1. Chọn target **PhoneIntel** → tab **Signing & Capabilities** → mục
-   **Team**, chọn Apple ID cá nhân của bạn (Xcode → Settings → Accounts để
-   thêm nếu chưa có). Lặp lại cho target **PhoneIntelCallDirectory**.
-2. Nếu Xcode báo lỗi App Groups chưa đăng ký: bấm nút để Xcode tự tạo (free
-   account vẫn tạo được App Group).
-3. Cắm iPhone qua cáp, chọn máy làm **Destination** (góc trên bên trái).
-4. Bấm **Run** (▶). Lần đầu, iPhone sẽ hỏi **"Untrusted Developer"** —
-   vào **Cài đặt → Cài đặt chung → VPN & Quản lý thiết bị**, tin cậy Apple
-   ID của bạn, rồi mở lại app.
-5. Trong app, bấm **"Đồng bộ dữ liệu ngay"** để tải danh sách lần đầu.
-6. Vào **Cài đặt → Điện thoại → Chặn cuộc gọi & Nhận diện**, bật công tắc
-   **Tra Số VN**.
+Nếu vẫn muốn làm qua Xcode GUI thay vì dòng lệnh: mở `PhoneIntel.xcodeproj`,
+chọn target → **Signing & Capabilities** → chọn Team, cắm cáp, bấm Run (▶).
+Lần đầu trên thiết bị mới, iPhone hỏi **"Untrusted Developer"** — vào
+**Cài đặt → Cài đặt chung → VPN & Quản lý thiết bị** để tin cậy.
 
-## Giới hạn của chữ ký Apple ID miễn phí
+Sau khi cài: mở app, bấm **"Đồng bộ dữ liệu ngay"**, rồi vào **Cài đặt →
+Điện thoại → Chặn cuộc gọi & Nhận diện**, bật **Tra Số VN**.
 
-- App tự hết hạn sau **7 ngày** — cần cắm cáp mở lại trong Xcode và bấm Run
-  lần nữa (không cần build lại từ đầu, chỉ re-sign, vài giây).
-- Nếu muốn khỏi lặp lại việc này: cần Apple Developer Program trả phí
-  ($99/năm), cấp certificate 1 năm.
+## Giới hạn của chữ ký Apple ID miễn phí (Personal Team)
+
+Chỉ áp dụng nếu dùng Personal Team thay vì team trả phí như hiện tại:
+- App tự hết hạn sau **7 ngày** — cần cắm cáp build lại (chỉ re-sign, vài giây).
+- Giới hạn ~3 thiết bị đăng ký/năm, không tự gỡ được qua dòng lệnh.
 
 ## Đồng bộ dữ liệu
 

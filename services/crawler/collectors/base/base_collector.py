@@ -18,6 +18,13 @@ class FetchedDocument:
     content_type: str
     raw_content: str
     fetched_at: str  # ISO8601
+    # Phase 2 incremental crawling (see docs/PHASE2_IMPLEMENTATION_PLAN.md
+    # Part G): conditional-request support alongside the existing
+    # content_hash-based dedup. All default so Phase 1 call sites are
+    # unaffected.
+    etag: Optional[str] = None
+    last_modified: Optional[str] = None
+    not_modified: bool = False
 
 
 @dataclass

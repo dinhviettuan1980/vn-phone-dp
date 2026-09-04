@@ -18,9 +18,16 @@ function bestLabel(displayName: string): string {
  * Entries for the iOS Call Directory Extension: only MOBILE/LANDLINE numbers
  * (the types that actually appear as an incoming caller ID -- 1900/1800
  * hotlines are numbers customers call TO, not numbers that call customers),
- * backed by at least one real (non-fixture) source, highest-confidence
- * identity per phone, sorted ascending by numeric phone value (Apple
- * requires ascending order for a full reload).
+ * backed by at least one HIGH-trust source, highest-confidence identity per
+ * phone, sorted ascending by numeric phone value (Apple requires ascending
+ * order for a full reload).
+ *
+ * trust_level = 'HIGH' (not a source-name pattern like 'Fixture%') is the
+ * real gate here: Phase 2 domain discovery and dataset ingestion both
+ * create sources at trust_level 'MEDIUM' until a human reviews them (see
+ * discovery_service.py / dataset_service.py), so anything auto-discovered
+ * never reaches a real device's caller ID without that review, regardless
+ * of what the source happens to be named.
  */
 export async function getCallDirectoryEntries(): Promise<CallDirectoryEntry[]> {
   const result = await pool.query<{ phone_e164: string; display_name: string; confidence: string }>(`
@@ -38,6 +45,7 @@ export async function getCallDirectoryEntries(): Promise<CallDirectoryEntry[]> {
         JOIN raw_documents rd ON rd.id = po.raw_document_id
         JOIN data_sources ds ON ds.id = rd.source_id
         WHERE pie.phone_identity_id = pi.id
+          AND ds.trust_level = 'HIGH'
           AND ds.name NOT LIKE 'Fixture%'
       )
     ORDER BY pn.phone_e164, pi.confidence DESC

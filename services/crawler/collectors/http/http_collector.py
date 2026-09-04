@@ -96,21 +96,47 @@ class HttpCollector(BaseCollector):
         rp = _get_robots_parser(url)
         return rp.can_fetch(USER_AGENT, url)
 
-    def fetch(self, url: str) -> FetchedDocument:
+    def fetch(self, url: str, etag: str | None = None, last_modified: str | None = None) -> FetchedDocument:
+        """`etag`/`last_modified` (from a previous fetch's response headers,
+        stored on crawl_targets) enable a conditional GET -- if the server
+        supports it and nothing changed, it returns 304 with no body,
+        saving bandwidth on top of the existing content_hash dedup (which
+        still requires downloading the page first). See
+        docs/PHASE2_IMPLEMENTATION_PLAN.md Part G."""
         if not self._check_robots_allowed(url):
             raise PermissionError(f"robots.txt disallows crawling {url}")
 
         self._respect_rate_limit(url)
+
+        request_headers = {"User-Agent": USER_AGENT}
+        if etag:
+            request_headers["If-None-Match"] = etag
+        if last_modified:
+            request_headers["If-Modified-Since"] = last_modified
 
         last_error: Exception | None = None
         for attempt in range(1, self.max_retries + 1):
             try:
                 with httpx.Client(
                     timeout=self.timeout_seconds,
-                    headers={"User-Agent": USER_AGENT},
+                    headers=request_headers,
                     follow_redirects=True,
                 ) as client:
                     response = client.get(url)
+
+                    if response.status_code == 304:
+                        return FetchedDocument(
+                            url=url,
+                            final_url=str(response.url),
+                            http_status=304,
+                            content_type=response.headers.get("content-type", ""),
+                            raw_content="",
+                            fetched_at=datetime.now(timezone.utc).isoformat(),
+                            etag=response.headers.get("etag", etag),
+                            last_modified=response.headers.get("last-modified", last_modified),
+                            not_modified=True,
+                        )
+
                     return FetchedDocument(
                         url=url,
                         final_url=str(response.url),
@@ -118,6 +144,8 @@ class HttpCollector(BaseCollector):
                         content_type=response.headers.get("content-type", ""),
                         raw_content=response.text,
                         fetched_at=datetime.now(timezone.utc).isoformat(),
+                        etag=response.headers.get("etag"),
+                        last_modified=response.headers.get("last-modified"),
                     )
             except (httpx.TimeoutException, httpx.TransportError) as exc:
                 last_error = exc

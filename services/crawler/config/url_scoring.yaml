@@ -1,0 +1,66 @@
+# Config-driven URL relevance scoring -- no business logic hard-coded in
+# the crawler itself. Matches against the URL path (case-insensitive).
+# First matching pattern in each list wins; scores are NOT summed across
+# lists, only the highest-scoring match overall is kept.
+
+high_priority:
+  - pattern: "lien-he"
+    score: 100
+  - pattern: "contact"
+    score: 100
+  - pattern: "hotline"
+    score: 95
+  - pattern: "cham-soc-khach-hang"
+    score: 95
+  - pattern: "customer-service"
+    score: 95
+  - pattern: "customer-care"
+    score: 95
+  - pattern: "support"
+    score: 90
+
+medium_priority:
+  - pattern: "chi-nhanh"
+    score: 80
+  - pattern: "branch"
+    score: 80
+  - pattern: "branches"
+    score: 80
+  - pattern: "location"
+    score: 75
+  - pattern: "locations"
+    score: 75
+  - pattern: "store"
+    score: 70
+  - pattern: "stores"
+    score: 70
+  - pattern: "office"
+    score: 70
+  - pattern: "offices"
+    score: 70
+
+low_priority:
+  - pattern: "about"
+    score: 40
+  - pattern: "gioi-thieu"
+    score: 40
+  - pattern: "company"
+    score: 35
+  - pattern: "cong-ty"
+    score: 35
+
+# Any URL matching none of the above gets this score.
+default_score: 10
+
+# Deny patterns always win, regardless of any positive match -- score 0,
+# never queued.
+deny:
+  - "wp-admin"
+  - "login"
+  - "cart"
+  - "checkout"
+  - "/api/"
+  - ".pdf"
+  - ".jpg"
+  - ".png"
+  - ".zip"

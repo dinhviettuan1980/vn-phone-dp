@@ -62,17 +62,91 @@ def update_crawl_target_result(
     crawl_status: str,
     http_status: Optional[int],
     content_hash: Optional[str],
+    etag: Optional[str] = None,
+    last_modified: Optional[str] = None,
 ) -> None:
     with conn.cursor() as cur:
         cur.execute(
             """
             UPDATE crawl_targets
             SET crawl_status = %s, http_status = %s, content_hash = %s,
+                etag = COALESCE(%s, etag), last_modified = COALESCE(%s, last_modified),
                 attempt_count = attempt_count + 1, last_crawled_at = now(), updated_at = now()
             WHERE id = %s
             """,
-            (crawl_status, http_status, content_hash, target_id),
+            (crawl_status, http_status, content_hash, etag, last_modified, target_id),
         )
+
+
+def get_crawl_target_conditional_headers(conn: psycopg.Connection, target_id: str) -> dict:
+    with conn.cursor() as cur:
+        cur.execute("SELECT etag, last_modified FROM crawl_targets WHERE id = %s", (target_id,))
+        row = cur.fetchone()
+        return row or {"etag": None, "last_modified": None}
+
+
+def get_due_crawl_targets(conn: psycopg.Connection, limit: int = 100) -> list[dict]:
+    """crawl_targets whose next_crawl_at has arrived -- what the scheduler
+    turns into CRAWL_URL jobs. Ordered by priority (URL relevance score,
+    reused from domain discovery) so high-value pages get crawled first."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, source_id, url FROM crawl_targets
+            WHERE status = 'active' AND next_crawl_at <= now()
+            ORDER BY priority DESC, next_crawl_at ASC
+            LIMIT %s
+            """,
+            (limit,),
+        )
+        return cur.fetchall()
+
+
+def has_pending_job_for_target(conn: psycopg.Connection, crawl_target_id: str) -> bool:
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT 1 FROM crawl_jobs WHERE crawl_target_id = %s AND status IN ('PENDING', 'RUNNING', 'RETRY') LIMIT 1",
+            (crawl_target_id,),
+        )
+        return cur.fetchone() is not None
+
+
+def has_pending_job_for_source(conn: psycopg.Connection, source_id: str, job_type: str) -> bool:
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT 1 FROM crawl_jobs WHERE source_id = %s AND job_type = %s AND status IN ('PENDING', 'RUNNING', 'RETRY') LIMIT 1",
+            (source_id, job_type),
+        )
+        return cur.fetchone() is not None
+
+
+def get_sources_due_for_discovery(conn: psycopg.Connection) -> list[dict]:
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, name, base_url, crawl_frequency FROM data_sources "
+            "WHERE is_active = true AND next_scheduled_at <= now()"
+        )
+        return cur.fetchall()
+
+
+def advance_source_schedule(conn: psycopg.Connection, source_id: str, crawl_frequency: str) -> None:
+    interval_days = {"DAILY": 1, "WEEKLY": 7, "MONTHLY": 30}.get(crawl_frequency, 7)
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE data_sources SET next_scheduled_at = now() + (interval '1 day' * %s), updated_at = now() WHERE id = %s",
+            (interval_days, source_id),
+        )
+    conn.commit()
+
+
+def get_crawl_target(conn: psycopg.Connection, target_id: str) -> Optional[dict]:
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT ct.id, ct.url, ct.source_id, ds.name AS source_name, ds.base_url, ds.crawl_policy "
+            "FROM crawl_targets ct JOIN data_sources ds ON ds.id = ct.source_id WHERE ct.id = %s",
+            (target_id,),
+        )
+        return cur.fetchone()
 
 
 def get_last_content_hash(conn: psycopg.Connection, crawl_target_id: str) -> Optional[str]:
@@ -144,6 +218,46 @@ def insert_phone_observation(
             (raw_document_id, phone_raw, phone_normalized, context_text, context_before, context_after, extraction_method, confidence, position_start, position_end),
         )
         return cur.fetchone()["id"]
+
+
+def insert_dataset(
+    conn: psycopg.Connection,
+    source_id: Optional[str],
+    name: str,
+    dataset_format: str,
+    checksum: str,
+    dataset_url: Optional[str] = None,
+    license_notes: Optional[str] = None,
+    row_count: Optional[int] = None,
+) -> dict:
+    """Idempotent on checksum: re-ingesting the identical file returns the
+    existing dataset row instead of creating a duplicate."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT id, status FROM datasets WHERE checksum = %s", (checksum,))
+        existing = cur.fetchone()
+        if existing:
+            return existing
+
+        cur.execute(
+            """
+            INSERT INTO datasets (source_id, name, dataset_url, format, license_notes, checksum, row_count, status, downloaded_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, 'PENDING', now())
+            RETURNING id, status
+            """,
+            (source_id, name, dataset_url, dataset_format, license_notes, checksum, row_count),
+        )
+        row = cur.fetchone()
+    conn.commit()
+    return row
+
+
+def update_dataset_progress(conn: psycopg.Connection, dataset_id: str, processed_rows: int, status: str) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE datasets SET processed_rows = %s, status = %s, updated_at = now() WHERE id = %s",
+            (processed_rows, status, dataset_id),
+        )
+    conn.commit()
 
 
 def upsert_phone_number(conn: psycopg.Connection, phone_e164: str, country_code: str, national_number: str, phone_type: str) -> str:

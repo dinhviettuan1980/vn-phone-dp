@@ -1,0 +1,14 @@
+# Column names (after lowercasing + stripping Vietnamese diacritics + spaces)
+# that should be treated as a phone-number column when ingesting a dataset.
+aliases:
+  - phone
+  - telephone
+  - tel
+  - mobile
+  - hotline
+  - sdt
+  - so_dt
+  - so_dien_thoai
+  - dien_thoai
+  - contact_phone
+  - phone_number

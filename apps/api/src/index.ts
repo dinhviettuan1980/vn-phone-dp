@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import { phoneRoutes } from "./routes/phones.js";
 import { statsRoutes } from "./routes/stats.js";
 import { callDirectoryRoutes } from "./routes/callDirectory.js";
+import { callLogRoutes } from "./routes/callLog.js";
 
 const app = Fastify({ logger: true });
 
@@ -10,6 +11,7 @@ app.get("/health", async () => ({ status: "ok" }));
 await app.register(phoneRoutes);
 await app.register(statsRoutes);
 await app.register(callDirectoryRoutes);
+await app.register(callLogRoutes);
 
 const port = Number(process.env.PORT ?? 3000);
 app

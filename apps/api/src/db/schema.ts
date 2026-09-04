@@ -7,6 +7,7 @@ import {
   integer,
   numeric,
   timestamp,
+  date,
   jsonb,
   uniqueIndex,
   index,
@@ -207,5 +208,25 @@ export const phoneIdentityEvidence = pgTable(
   (t) => ({
     identityIdx: index("phone_identity_evidence_identity_idx").on(t.phoneIdentityId),
     uq: uniqueIndex("phone_identity_evidence_uq").on(t.phoneIdentityId, t.phoneObservationId),
+  })
+);
+
+// Manually reported by the phone owner (iOS has no API to read call
+// history) -- personal usage data, deliberately not part of the
+// raw_documents/phone_observations provenance chain. See README.md.
+export const personalCallLogs = pgTable(
+  "personal_call_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    phoneRaw: text("phone_raw").notNull(),
+    phoneNormalized: text("phone_normalized"),
+    callDate: date("call_date").notNull(),
+    callCount: integer("call_count").notNull().default(1),
+    notes: text("notes"),
+    importedAt: timestamp("imported_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    phoneIdx: index("personal_call_logs_phone_idx").on(t.phoneNormalized),
+    dateIdx: index("personal_call_logs_date_idx").on(t.callDate),
   })
 );

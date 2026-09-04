@@ -466,3 +466,57 @@ sources:
     urls:
       - "https://www.vietbank.com.vn/ve-vietbank/lien-he"
 
+# ---------------------------------------------------------------------------
+# Wave 5 (2026-09-04) -- consumer finance + foreign banks operating in VN.
+#
+# Excluded: GPBank (gpbank.com.vn) -- robots.txt itself is served by
+# Incapsula's JS-challenge interstitial ("Request unsuccessful"), a WAF
+# block, not real content. OceanBank (oceanbank.vn) -- TCP connection times
+# out from two independent networks (this sandbox AND the VPS), i.e. the
+# server itself is unreachable, not an access-policy decision either way.
+# ---------------------------------------------------------------------------
+
+  - name: "VietCredit"
+    base_url: "https://www.vietcredit.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Consumer finance company, public official contact page (robots.txt has no rules -- unrestricted). Institutional numbers only."
+    urls:
+      - "https://www.vietcredit.vn/lien-he-vietcredit"
+
+  - name: "HSBC Vietnam"
+    base_url: "https://www.hsbc.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Foreign bank branch, public official contact page (robots.txt allows this path). Institutional numbers only."
+    urls:
+      - "https://www.hsbc.com.vn/en-vn/contact/"
+
+  - name: "Standard Chartered Vietnam"
+    base_url: "https://www.sc.com"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Foreign bank branch, public official contact page (robots.txt allows this path). Institutional numbers only."
+    urls:
+      - "https://www.sc.com/vn/personal/reachus/"
+
+  - name: "Shinhan Bank Vietnam"
+    base_url: "https://shinhan.com.vn"
+    source_type: OFFICIAL_WEBSITE
+    trust_level: HIGH
+    collector: official
+    crawl_delay_seconds: 3
+    robots_checked: true
+    license_notes: "Foreign bank branch, public official contact page (robots.txt has no rules -- unrestricted). Institutional numbers only."
+    urls:
+      - "https://shinhan.com.vn/vi/support/lien-he-voi-ngan-hang-shinhan-viet-nam.html"
+

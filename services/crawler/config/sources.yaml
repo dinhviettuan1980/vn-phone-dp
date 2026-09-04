@@ -474,6 +474,11 @@ sources:
 # block, not real content. OceanBank (oceanbank.vn) -- TCP connection times
 # out from two independent networks (this sandbox AND the VPS), i.e. the
 # server itself is unreachable, not an access-policy decision either way.
+# Shinhan Bank Vietnam (shinhan.com.vn) -- broken TLS cert chain on their
+# server (missing intermediate cert); works on macOS curl (auto-fetches the
+# missing intermediate) but fails strict verification from the VPS/Linux --
+# a real misconfiguration on their end, not something we bypass by
+# disabling cert verification.
 # ---------------------------------------------------------------------------
 
   - name: "VietCredit"
@@ -508,15 +513,4 @@ sources:
     license_notes: "Foreign bank branch, public official contact page (robots.txt allows this path). Institutional numbers only."
     urls:
       - "https://www.sc.com/vn/personal/reachus/"
-
-  - name: "Shinhan Bank Vietnam"
-    base_url: "https://shinhan.com.vn"
-    source_type: OFFICIAL_WEBSITE
-    trust_level: HIGH
-    collector: official
-    crawl_delay_seconds: 3
-    robots_checked: true
-    license_notes: "Foreign bank branch, public official contact page (robots.txt has no rules -- unrestricted). Institutional numbers only."
-    urls:
-      - "https://shinhan.com.vn/vi/support/lien-he-voi-ngan-hang-shinhan-viet-nam.html"
 

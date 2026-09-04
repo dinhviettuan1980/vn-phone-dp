@@ -17,13 +17,21 @@ disk box.
 systemd
 ├── crawler-scheduler.service   (unchanged, Phase 2.5)
 ├── crawler-worker.service      (unchanged, Phase 2.5)
-└── system-metrics.service      (new)
-        │
-        ▼  every SYSTEM_METRICS_INTERVAL_SECONDS (default 300s)
-   services/crawler/monitoring/collector.py
-        │  /proc/stat, /proc/loadavg, /proc/meminfo, os.statvfs("/")
+├── system-metrics.service      (new)
+│       │
+│       ▼  every SYSTEM_METRICS_INTERVAL_SECONDS (default 300s)
+│   services/crawler/monitoring/collector.py
+│       │  /proc/stat, /proc/loadavg, /proc/meminfo, os.statvfs("/")
+│       ▼
+│   PostgreSQL: system_metrics table
+│
+└── aggregation.timer -> aggregation.service   (new, added after observation
+        │                                       start -- see note below)
+        ▼  every 15 minutes
+   npm run aggregate -w @phoneintel/api  (apps/api/src/cli/aggregate.ts)
+        │  full re-scan of phone_observations -> phone_identities/evidence
         ▼
-   PostgreSQL: system_metrics table
+   PostgreSQL
         │
         ▼
 apps/api/src/routes/monitoring.ts  (GET /api/v1/monitoring/*)
@@ -31,6 +39,23 @@ apps/api/src/routes/monitoring.ts  (GET /api/v1/monitoring/*)
         ▼
 apps/web/ "Vận hành" tab (auto-refreshes every 60s)
 ```
+
+**Why `aggregation.timer` was added mid-observation**: the crawler pipeline
+(`crawler-worker`/`crawler-scheduler`) writes `raw_documents` and
+`phone_observations` continuously, and separately upserts `phone_numbers`
+inline during extraction — but turning an observation into a
+`phone_identities` row (the thing the "production" filter in
+`callDirectoryExport.ts`, and therefore the dashboard's Data Growth
+numbers, actually reads) was still the Phase 1 manual step
+(`npm run aggregate`), never wired into the continuous pipeline. Without
+it, the dashboard's "Data Growth" section would have stayed flat for the
+entire 72h regardless of how much real crawling happened. `aggregation.timer`
+(systemd calendar timer, `OnUnitActiveSec=15min`) runs the existing,
+unmodified `aggregate.ts` CLI on a schedule — no new code, no new
+infrastructure, just automating a step that already existed. It's a
+full re-scan of `phone_observations` each run (idempotent via the existing
+`(phone_number_id, normalized_name, claim_source)` upsert key), which is
+fine at current data volume (~10s per run).
 
 No new infrastructure: same Postgres, same TS API, same static web app,
 Python stdlib only for the collector (no psutil, no new dependency).
@@ -74,9 +99,13 @@ curl https://vn-phone.tuandv.id.vn/api/v1/monitoring/jobs
 ```bash
 ssh pc1@103.163.216.32
 sudo systemctl status crawler-scheduler crawler-worker system-metrics
+sudo systemctl status aggregation.timer
+sudo systemctl list-timers aggregation.timer
 ```
 
-All three should read `active (running)`.
+The first three should read `active (running)`; `aggregation.timer` reads
+`active (waiting)` (timers are idle between fires by design) with
+`list-timers` showing the next scheduled run.
 
 ## Logs
 

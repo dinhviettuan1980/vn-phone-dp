@@ -1,0 +1,9 @@
+[Unit]
+Description=Vietnam Phone Intelligence Platform - phone identity aggregation (one-shot, triggered by aggregation.timer)
+
+[Service]
+Type=oneshot
+# Replace /opt/vn-phone-dp with the actual deploy path on the target host.
+WorkingDirectory=/opt/vn-phone-dp
+EnvironmentFile=/opt/vn-phone-dp/apps/api/.env
+ExecStart=/usr/bin/npm run aggregate -w @phoneintel/api

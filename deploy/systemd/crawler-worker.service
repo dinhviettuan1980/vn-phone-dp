@@ -1,0 +1,20 @@
+[Unit]
+Description=Vietnam Phone Intelligence Platform - crawler worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Replace /opt/vn-phone-dp with the actual deploy path on the target host.
+WorkingDirectory=/opt/vn-phone-dp/services/crawler
+EnvironmentFile=/opt/vn-phone-dp/.env
+ExecStart=/opt/vn-phone-dp/services/crawler/.venv/bin/python -m jobs.worker --loop 30
+Restart=always
+RestartSec=10
+# Give the current job a chance to finish and the process to exit(0) via
+# its own SIGTERM handler before systemd escalates to SIGKILL.
+TimeoutStopSec=60
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

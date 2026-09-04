@@ -164,6 +164,7 @@ const tabButtons = document.querySelectorAll(".tab-btn");
 const tabPanels = {
   lookup: document.getElementById("tab-lookup"),
   calllog: document.getElementById("tab-calllog"),
+  ops: document.getElementById("tab-ops"),
 };
 
 tabButtons.forEach((btn) => {
@@ -176,6 +177,10 @@ tabButtons.forEach((btn) => {
     if (btn.dataset.tab === "calllog") {
       loadSummary();
       loadUnknown();
+    }
+    if (btn.dataset.tab === "ops") {
+      loadOpsStats();
+      loadOpsJobs();
     }
   });
 });
@@ -346,3 +351,73 @@ async function loadUnknown() {
     unknownTableWrap.innerHTML = `<p class="empty-note">Không tải được dữ liệu.</p>`;
   }
 }
+
+// ---------------------------------------------------------------------
+// Operations (job queue) tab
+// ---------------------------------------------------------------------
+const opsStatusEl = document.getElementById("ops-status");
+const opsStatsRow = document.getElementById("ops-stats-row");
+const opsLiveness = document.getElementById("ops-liveness");
+const opsJobsTableWrap = document.getElementById("ops-jobs-table-wrap");
+const opsRefreshBtn = document.getElementById("ops-refresh");
+
+function setOpsStatus(kind, message) {
+  if (!message) {
+    opsStatusEl.hidden = true;
+    return;
+  }
+  opsStatusEl.hidden = false;
+  opsStatusEl.className = `status ${kind}`;
+  opsStatusEl.textContent = message;
+}
+
+async function loadOpsStats() {
+  try {
+    const res = await fetch("/api/v1/acquisition/job-stats");
+    if (!res.ok) throw new Error("bad response");
+    const data = await res.json();
+
+    opsStatsRow.innerHTML = `
+      <div><span class="stat-value">${data.by_status.PENDING}</span>Đang chờ</div>
+      <div><span class="stat-value">${data.by_status.RUNNING}</span>Đang chạy</div>
+      <div><span class="stat-value">${data.by_status.RETRY}</span>Chờ thử lại</div>
+      <div><span class="stat-value">${data.last_24h.completed}</span>Hoàn thành (24h)</div>
+      <div><span class="stat-value">${data.last_24h.failed}</span>Thất bại (24h)</div>
+    `;
+    opsLiveness.textContent = data.last_job_started_at
+      ? `Job gần nhất bắt đầu lúc: ${formatDate(data.last_job_started_at)} (không phải health-check thời gian thực -- chỉ là bằng chứng gần nhất worker đã chạy)`
+      : "Chưa có job nào từng chạy.";
+    setOpsStatus(null);
+  } catch (err) {
+    setOpsStatus("error", "Không tải được trạng thái hàng đợi.");
+  }
+}
+
+async function loadOpsJobs() {
+  opsJobsTableWrap.innerHTML = `<p class="empty-note">Đang tải…</p>`;
+  try {
+    const res = await fetch("/api/v1/acquisition/jobs?limit=20");
+    if (!res.ok) throw new Error("bad response");
+    const data = await res.json();
+    renderPhoneTable(
+      opsJobsTableWrap,
+      data.jobs,
+      [
+        { label: "Loại", render: (r) => escapeHtml(r.jobType) },
+        { label: "Nguồn", render: (r) => escapeHtml(r.sourceName || "—") },
+        { label: "Trạng thái", render: (r) => `<span class="status-pill ${r.status}">${r.status}</span>` },
+        { label: "Lần thử", render: (r) => `${r.attemptCount}/${r.maxAttempts}` },
+        { label: "Tạo lúc", render: (r) => formatDate(r.createdAt) },
+        { label: "Lỗi gần nhất", render: (r) => (r.errorMessage ? escapeHtml(r.errorMessage) : "—") },
+      ],
+      "Chưa có job nào trong hàng đợi."
+    );
+  } catch (err) {
+    opsJobsTableWrap.innerHTML = `<p class="empty-note">Không tải được dữ liệu.</p>`;
+  }
+}
+
+opsRefreshBtn.addEventListener("click", () => {
+  loadOpsStats();
+  loadOpsJobs();
+});

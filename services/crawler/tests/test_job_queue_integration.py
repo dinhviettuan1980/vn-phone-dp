@@ -9,6 +9,7 @@ import pytest
 
 pytestmark = pytest.mark.skipif(not os.environ.get("DATABASE_URL"), reason="DATABASE_URL not set")
 
+import config
 from jobs import queue
 from storage import postgres_repository as repo
 
@@ -79,9 +80,10 @@ def test_recover_stale_jobs(conn):
     job_id = queue.create_job(conn, job_type="CRAWL_URL", metadata={})
     queue.claim_job(conn)
 
-    # Simulate a worker that crashed 20 minutes ago (beyond STALE_LOCK_MINUTES).
+    # Simulate a worker that crashed well beyond the configured stale timeout.
+    stale_minutes = config.JOB_STALE_TIMEOUT_MINUTES + 10
     with conn.cursor() as cur:
-        cur.execute("UPDATE crawl_jobs SET locked_at = now() - interval '20 minutes' WHERE id = %s", (job_id,))
+        cur.execute("UPDATE crawl_jobs SET locked_at = now() - (interval '1 minute' * %s) WHERE id = %s", (stale_minutes, job_id))
     conn.commit()
 
     recovered = queue.recover_stale_jobs(conn)

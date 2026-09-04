@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { listJobs, getJob, getAcquisitionStats, getSourcePerformance, enqueueDomainDiscovery } from "../services/acquisition.js";
+import { getJobStats } from "../services/jobStats.js";
 import { getUnknownNumbersPriority } from "../services/callLog.js";
 
 export async function acquisitionRoutes(app: FastifyInstance) {
@@ -26,6 +27,11 @@ export async function acquisitionRoutes(app: FastifyInstance) {
 
   app.get("/api/v1/acquisition/stats", async (_request, reply) => {
     const stats = await getAcquisitionStats();
+    return reply.send(stats);
+  });
+
+  app.get("/api/v1/acquisition/job-stats", async (_request, reply) => {
+    const stats = await getJobStats();
     return reply.send(stats);
   });
 

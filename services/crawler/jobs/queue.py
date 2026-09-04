@@ -16,7 +16,9 @@ from typing import Optional
 
 import psycopg
 
-STALE_LOCK_MINUTES = 10
+import config
+
+STALE_LOCK_MINUTES = config.JOB_STALE_TIMEOUT_MINUTES
 BACKOFF_BASE_SECONDS = 30
 
 
@@ -35,18 +37,37 @@ def create_job(
     metadata: Optional[dict] = None,
     scheduled_at: Optional[datetime] = None,
 ) -> str:
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            INSERT INTO crawl_jobs (job_type, source_id, crawl_target_id, priority, metadata, scheduled_at)
-            VALUES (%s, %s, %s, %s, %s, COALESCE(%s, now()))
-            RETURNING id
-            """,
-            (job_type, source_id, crawl_target_id, priority, json.dumps(metadata or {}), scheduled_at),
-        )
-        job_id = cur.fetchone()["id"]
-    conn.commit()
-    return job_id
+    """Returns the new job's id, or the existing active job's id if one
+    already exists for this target/source+job_type (crawl_jobs_active_*_uq,
+    migration 0004) -- callers can treat the return value as "the job that
+    will run" either way, no need to branch on which case happened."""
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO crawl_jobs (job_type, source_id, crawl_target_id, priority, metadata, scheduled_at)
+                VALUES (%s, %s, %s, %s, %s, COALESCE(%s, now()))
+                RETURNING id
+                """,
+                (job_type, source_id, crawl_target_id, priority, json.dumps(metadata or {}), scheduled_at),
+            )
+            job_id = cur.fetchone()["id"]
+        conn.commit()
+        return job_id
+    except psycopg.errors.UniqueViolation:
+        conn.rollback()
+        with conn.cursor() as cur:
+            if crawl_target_id is not None:
+                cur.execute(
+                    "SELECT id FROM crawl_jobs WHERE crawl_target_id = %s AND status IN ('PENDING', 'RUNNING', 'RETRY')",
+                    (crawl_target_id,),
+                )
+            else:
+                cur.execute(
+                    "SELECT id FROM crawl_jobs WHERE source_id = %s AND job_type = %s AND status IN ('PENDING', 'RUNNING', 'RETRY') AND crawl_target_id IS NULL",
+                    (source_id, job_type),
+                )
+            return cur.fetchone()["id"]
 
 
 def claim_job(conn: psycopg.Connection) -> Optional[dict]:

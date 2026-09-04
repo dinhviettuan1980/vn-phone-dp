@@ -88,18 +88,26 @@ def get_crawl_target_conditional_headers(conn: psycopg.Connection, target_id: st
 def get_due_crawl_targets(conn: psycopg.Connection, limit: int = 100) -> list[dict]:
     """crawl_targets whose next_crawl_at has arrived -- what the scheduler
     turns into CRAWL_URL jobs. Ordered by priority (URL relevance score,
-    reused from domain discovery) so high-value pages get crawled first."""
+    reused from domain discovery) so high-value pages get crawled first;
+    id is a final tiebreaker so the ordering is fully deterministic across
+    scheduler runs."""
     with conn.cursor() as cur:
         cur.execute(
             """
             SELECT id, source_id, url FROM crawl_targets
             WHERE status = 'active' AND next_crawl_at <= now()
-            ORDER BY priority DESC, next_crawl_at ASC
+            ORDER BY priority DESC, next_crawl_at ASC, id ASC
             LIMIT %s
             """,
             (limit,),
         )
         return cur.fetchall()
+
+
+def count_active_jobs(conn: psycopg.Connection) -> int:
+    with conn.cursor() as cur:
+        cur.execute("SELECT count(*) AS n FROM crawl_jobs WHERE status IN ('PENDING', 'RUNNING', 'RETRY')")
+        return cur.fetchone()["n"]
 
 
 def has_pending_job_for_target(conn: psycopg.Connection, crawl_target_id: str) -> bool:
@@ -121,10 +129,17 @@ def has_pending_job_for_source(conn: psycopg.Connection, source_id: str, job_typ
 
 
 def get_sources_due_for_discovery(conn: psycopg.Connection) -> list[dict]:
+    """crawl_frequency = 'MANUAL' is excluded here at the query level (not
+    just via the one-off next_scheduled_at patch applied to the 36
+    hand-vetted Phase 1 sources after the discovery-scope incident -- see
+    docs/architecture.md "Pre-existing sources default to MANUAL") so a
+    newly added MANUAL source is safe by construction, not by remembering
+    to also push its schedule far into the future."""
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT id, name, base_url, crawl_frequency FROM data_sources "
-            "WHERE is_active = true AND next_scheduled_at <= now()"
+            "SELECT id, name, base_url, crawl_frequency, is_active FROM data_sources "
+            "WHERE is_active = true AND crawl_frequency != 'MANUAL' AND next_scheduled_at <= now() "
+            "ORDER BY id ASC"
         )
         return cur.fetchall()
 

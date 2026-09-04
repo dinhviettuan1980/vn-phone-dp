@@ -398,3 +398,39 @@ body {
 .table-scroll {
   overflow-x: auto;
 }
+
+/* Ops tab */
+.ops-liveness {
+  margin-top: 12px;
+}
+
+.ops-refresh-btn {
+  align-self: flex-start;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+}
+
+.ops-refresh-btn:hover {
+  filter: brightness(0.95);
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+.status-pill.SUCCESS { background: var(--accent-soft); color: var(--accent-ink); }
+.status-pill.FAILED { background: #f6e4de; color: var(--danger); }
+.status-pill.RUNNING { background: var(--paper-2); color: var(--ink-2); }
+.status-pill.PENDING,
+.status-pill.RETRY { background: #f4e9d4; color: var(--warn); }
+.status-pill.CANCELLED { background: var(--paper-2); color: var(--ink-3); }

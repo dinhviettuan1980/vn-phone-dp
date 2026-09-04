@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import argparse
 import logging
+import signal
 import time
 from pathlib import Path
 
+import config
 from domain_discovery.discovery_service import discover_domain
 from jobs import queue
 from jobs.crawl_worker import extract_and_store_observations, load_sources_config, crawl_source
@@ -22,6 +24,14 @@ from storage import postgres_repository as repo
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger("crawler.worker")
+
+_shutdown_requested = False
+
+
+def _request_shutdown(signum, _frame) -> None:
+    global _shutdown_requested
+    _shutdown_requested = True
+    logger.info("[JOB] shutdown_requested signal=%s -- finishing current job, will not claim another", signum)
 
 
 def run_crawl_url_job(conn, job: dict) -> None:
@@ -123,14 +133,14 @@ JOB_HANDLERS = {
 
 
 def run_once(conn) -> int:
-    """Claims and runs jobs until the queue has nothing due. Returns the
-    number of jobs processed."""
+    """Claims and runs jobs until the queue has nothing due, or a shutdown
+    signal arrives. Returns the number of jobs processed."""
     recovered = queue.recover_stale_jobs(conn)
     if recovered:
         logger.info("[JOB] recovered_stale=%d", recovered)
 
     processed = 0
-    while True:
+    while not _shutdown_requested:
         job = queue.claim_job(conn)
         if job is None:
             break
@@ -157,17 +167,30 @@ def main() -> None:
     parser.add_argument("--loop", type=int, default=0, help="Keep polling every N seconds instead of exiting when the queue is empty")
     args = parser.parse_args()
 
+    signal.signal(signal.SIGTERM, _request_shutdown)
+    signal.signal(signal.SIGINT, _request_shutdown)
+
+    idle_sleep = args.loop or config.WORKER_IDLE_SLEEP_SECONDS
+    logger.info(
+        "[JOB] worker_started concurrency=%d idle_sleep_seconds=%d loop=%s",
+        config.WORKER_CONCURRENCY, idle_sleep, bool(args.loop),
+    )
+
     conn = repo.get_connection()
     try:
         if args.loop:
-            while True:
+            while not _shutdown_requested:
                 run_once(conn)
+                if _shutdown_requested:
+                    break
+                logger.info("[JOB] idle, sleeping %ds", args.loop)
                 time.sleep(args.loop)
         else:
             processed = run_once(conn)
             logger.info("[JOB] queue empty, processed=%d", processed)
     finally:
         conn.close()
+        logger.info("[JOB] worker_stopped")
 
 
 if __name__ == "__main__":

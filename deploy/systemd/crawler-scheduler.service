@@ -1,0 +1,18 @@
+[Unit]
+Description=Vietnam Phone Intelligence Platform - crawl job scheduler
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Replace /opt/vn-phone-dp with the actual deploy path on the target host.
+WorkingDirectory=/opt/vn-phone-dp/services/crawler
+EnvironmentFile=/opt/vn-phone-dp/.env
+ExecStart=/opt/vn-phone-dp/services/crawler/.venv/bin/python -m jobs.scheduler --loop 300
+Restart=always
+RestartSec=10
+TimeoutStopSec=30
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

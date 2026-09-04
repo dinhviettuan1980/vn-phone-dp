@@ -16,6 +16,7 @@
   <nav class="tabs">
     <button class="tab-btn active" data-tab="lookup">Tra cứu</button>
     <button class="tab-btn" data-tab="calllog">Nhật ký cuộc gọi</button>
+    <button class="tab-btn" data-tab="ops">Vận hành</button>
   </nav>
 
   <main class="container">
@@ -114,6 +115,28 @@
 
       <h2 class="identities-title">Số cần tìm hiểu (chưa xác định được là ai)</h2>
       <div id="unknown-table-wrap"></div>
+    </section>
+
+    <section id="tab-ops" class="tab-panel" hidden>
+      <p class="hint">
+        Trạng thái hàng đợi crawl job (scheduler + worker chạy nền trên VPS).
+        Trang này chỉ hiển thị, không có thao tác điều khiển worker.
+      </p>
+
+      <div id="ops-status" class="status" hidden></div>
+
+      <div class="result-card">
+        <div id="ops-stats-row" class="stats-row"></div>
+        <p id="ops-liveness" class="empty-note ops-liveness"></p>
+      </div>
+
+      <hr class="divider" />
+
+      <div class="section-header">
+        <h2 class="identities-title">Job gần đây</h2>
+        <button id="ops-refresh" type="button" class="ops-refresh-btn">Làm mới</button>
+      </div>
+      <div id="ops-jobs-table-wrap"></div>
     </section>
 
   </main>

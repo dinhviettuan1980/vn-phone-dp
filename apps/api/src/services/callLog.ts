@@ -175,3 +175,29 @@ export async function getUnknownNumbers(): Promise<UnknownNumberRow[]> {
     lastCallDate: r.last_call_date,
   }));
 }
+
+export interface UnknownNumberPriority extends UnknownNumberRow {
+  priorityScore: number;
+}
+
+/** Phase 2 "Unknown Number Intelligence Queue" (docs/PHASE2_IMPLEMENTATION_PLAN.md
+ * Part K): the same unknown-number list as getUnknownNumbers(), ranked by
+ * how much it actually matters to the phone's owner -- call volume,
+ * recency, and how many distinct days it kept calling (a one-off wrong
+ * number matters less than something that calls every day). Rule-based,
+ * no ML; see spec's suggested formula. */
+export async function getUnknownNumbersPriority(): Promise<UnknownNumberPriority[]> {
+  const rows = await getUnknownNumbers();
+
+  const now = Date.now();
+  const scored = rows.map((r) => {
+    const daysSinceLastCall = Math.max(0, Math.floor((now - new Date(r.lastCallDate).getTime()) / 86_400_000));
+    const callCountWeight = Math.min(r.totalCalls * 5, 50);
+    const recencyWeight = Math.max(0, 30 - daysSinceLastCall);
+    const repeatCallWeight = Math.min(r.daysCalled * 3, 20);
+    const priorityScore = Math.min(100, callCountWeight + recencyWeight + repeatCallWeight);
+    return { ...r, priorityScore };
+  });
+
+  return scored.sort((a, b) => b.priorityScore - a.priorityScore);
+}

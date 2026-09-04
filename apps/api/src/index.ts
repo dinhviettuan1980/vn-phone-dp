@@ -3,6 +3,7 @@ import { phoneRoutes } from "./routes/phones.js";
 import { statsRoutes } from "./routes/stats.js";
 import { callDirectoryRoutes } from "./routes/callDirectory.js";
 import { callLogRoutes } from "./routes/callLog.js";
+import { acquisitionRoutes } from "./routes/acquisition.js";
 
 const app = Fastify({ logger: true });
 
@@ -12,6 +13,7 @@ await app.register(phoneRoutes);
 await app.register(statsRoutes);
 await app.register(callDirectoryRoutes);
 await app.register(callLogRoutes);
+await app.register(acquisitionRoutes);
 
 const port = Number(process.env.PORT ?? 3000);
 app

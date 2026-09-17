@@ -1,8 +1,22 @@
 import type { FastifyInstance } from "fastify";
 import { suppressNumber, unsuppressNumber, isSuppressed, listSuppressions } from "../services/labelSuppressions.js";
+import { isAutoBlockHighRiskEnabled, setSetting } from "../services/appSettings.js";
 import { normalizeVietnamPhone } from "../normalizers/vietnamPhone.js";
 
 export async function settingsRoutes(app: FastifyInstance) {
+  app.get("/api/v1/settings/app", async (_request, reply) => {
+    return reply.send({ auto_block_high_risk: await isAutoBlockHighRiskEnabled() });
+  });
+
+  app.put<{ Body: { auto_block_high_risk?: boolean } }>("/api/v1/settings/app", async (request, reply) => {
+    const { auto_block_high_risk } = request.body ?? {};
+    if (typeof auto_block_high_risk !== "boolean") {
+      return reply.status(400).send({ error: "auto_block_high_risk_must_be_boolean" });
+    }
+    await setSetting("auto_block_high_risk", auto_block_high_risk);
+    return reply.send({ auto_block_high_risk });
+  });
+
   app.get("/api/v1/settings/suppressed-numbers", async (_request, reply) => {
     const entries = await listSuppressions();
     return reply.send({ entries });

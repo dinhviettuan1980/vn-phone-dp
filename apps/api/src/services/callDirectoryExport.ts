@@ -1,6 +1,7 @@
 import { pool } from "../db/client.js";
 import { normalizeVietnamPhone } from "../normalizers/vietnamPhone.js";
 import { getSuppressedSet } from "./labelSuppressions.js";
+import { isAutoBlockHighRiskEnabled } from "./appSettings.js";
 
 export interface CallDirectoryEntry {
   /** Full E.164 digits, no "+", as required by CXCallDirectoryPhoneNumber (Int64). */
@@ -148,4 +149,38 @@ export async function getCallDirectoryEntries(): Promise<CallDirectoryEntry[]> {
   // Apple requires strictly ascending numeric order for a full reload.
   visibleEntries.sort((a, b) => (BigInt(a.phoneDigits) < BigInt(b.phoneDigits) ? -1 : 1));
   return visibleEntries;
+}
+
+/**
+ * Opt-in (services/appSettings.ts:isAutoBlockHighRiskEnabled, default OFF):
+ * full E.164 digits (no "+") of numbers to hand to
+ * CXCallDirectoryExtensionContext.addBlockingEntry, not just
+ * addIdentificationEntry -- the call never rings at all. Deliberately a
+ * narrower bar than the HIGH label override (>=10 distinct reporters
+ * already used for identification): also requires SCAM as the top
+ * category, since auto-blocking is a much stronger action than a warning
+ * label and a telemarketing/spam number the owner might still want to
+ * receive (e.g. a delivery courier calling from a burner line) shouldn't
+ * be silently dropped the same way a reported scam number should.
+ * Suppressed numbers (0007_label_suppressions.sql) are excluded here too --
+ * an owner override should win over auto-blocking, not just over labeling.
+ */
+export async function getBlockedDigits(): Promise<string[]> {
+  if (!(await isAutoBlockHighRiskEnabled())) return [];
+
+  const spamFlags = await getSpamFlags();
+  const suppressed = await getSuppressedSet();
+
+  const blocked: string[] = [];
+  for (const [phoneE164, flag] of spamFlags) {
+    if (flag.distinctReporters < 10 || flag.topCategory !== "SCAM") continue;
+    if (suppressed.has(phoneE164)) continue;
+    const type = normalizeVietnamPhone(phoneE164).type;
+    if (type !== "MOBILE" && type !== "LANDLINE") continue;
+    blocked.push(phoneE164.replace(/^\+/, ""));
+  }
+
+  // Apple requires strictly ascending numeric order for a full reload.
+  blocked.sort((a, b) => (BigInt(a) < BigInt(b) ? -1 : 1));
+  return blocked;
 }

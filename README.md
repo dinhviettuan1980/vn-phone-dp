@@ -110,10 +110,29 @@ number gets announced on an incoming call at all.
     not just after the next manual sync. The web FE intentionally does NOT
     duplicate this control — it's a stats/lookup surface, day-to-day usage
     is the phone (see "Trạng thái dự án" below).
+- **Auto-block high-risk numbers** (opt-in, OFF by default — `app_settings`
+  key-value table, migration `0008`) — a step beyond labeling: numbers with
+  **≥10 distinct reporters AND SCAM as the top category** get an actual
+  `CXCallDirectoryExtensionContext.addBlockingEntry`, so the call never
+  rings (straight to voicemail), not just a warning label. Deliberately a
+  narrower bar than the MEDIUM/HIGH label thresholds and restricted to
+  SCAM specifically (not SPAM/TELEMARKETING) — auto-blocking is a much
+  stronger action than labeling, so it's reserved for the category where a
+  false negative (missing a real scam) matters more than a false positive
+  (a legitimate telemarketer briefly gets through). An owner's suppression
+  override (above) always wins over auto-blocking too.
+  - `GET/PUT /api/v1/settings/app` — `{auto_block_high_risk: boolean}`.
+  - `GET /export/call-directory` now also returns `blocked_digits` (E.164
+    digits, no `+`) alongside `entries`; `CallDirectoryHandler.swift` adds
+    ALL blocking entries first (ascending order), then ALL identification
+    entries (ascending order) — Apple requires the two lists not be
+    interleaved for a full reload.
+  - Toggle lives in the same iOS Settings screen as label suppression.
 - Tests: `apps/api/src/__tests__/spamReports.test.ts`,
-  `apps/api/src/__tests__/labelSuppressions.test.ts` (integration, same
-  pattern as `userConfirmedIdentity.test.ts` — skipped automatically
-  without `DATABASE_URL`).
+  `apps/api/src/__tests__/labelSuppressions.test.ts`,
+  `apps/api/src/__tests__/callBlocking.test.ts` (integration, same pattern
+  as `userConfirmedIdentity.test.ts` — skipped automatically without
+  `DATABASE_URL`).
 
 ## Trạng thái dự án (cập nhật gần nhất: 2026-09-04)
 

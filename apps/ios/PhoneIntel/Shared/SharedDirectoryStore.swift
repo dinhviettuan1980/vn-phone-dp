@@ -14,6 +14,11 @@ struct DirectoryEntry: Codable, Identifiable {
 
 struct DirectorySnapshot: Codable {
     let entries: [DirectoryEntry]
+    /// Full E.164 digits (no "+") to hand to addBlockingEntry instead of (or
+    /// in addition to) addIdentificationEntry -- see the API's
+    /// GET /export/call-directory "blocked_digits" field and
+    /// services/appSettings.ts (opt-in, off by default).
+    let blockedDigits: [String]
     let syncedAt: Date
 }
 

@@ -9,18 +9,37 @@ final class CallDirectoryHandler: CXCallDirectoryProvider {
     override func beginRequest(with context: CXCallDirectoryExtensionContext) {
         context.delegate = self
 
-        addAllIdentificationEntries(to: context)
+        guard let snapshot = SharedDirectoryStore.load() else {
+            context.completeRequest()
+            return
+        }
+
+        // Apple requires ALL blocking entries added first (in ascending
+        // order), THEN all identification entries (in their own ascending
+        // order) -- the two lists cannot be interleaved for a full reload.
+        addAllBlockingEntries(from: snapshot, to: context)
+        addAllIdentificationEntries(from: snapshot, to: context)
 
         context.completeRequest()
+    }
+
+    /// Opt-in (server-side setting, off by default -- see
+    /// services/appSettings.ts): a call from one of these numbers never
+    /// rings at all, straight to voicemail. Empty unless the owner enabled
+    /// auto-blocking in the app's Settings screen.
+    private func addAllBlockingEntries(from snapshot: DirectorySnapshot, to context: CXCallDirectoryExtensionContext) {
+        let sorted = snapshot.blockedDigits.sorted { (Int64($0) ?? 0) < (Int64($1) ?? 0) }
+        for digits in sorted {
+            guard let phoneNumber = CXCallDirectoryPhoneNumber(digits) else { continue }
+            context.addBlockingEntry(withNextSequentialPhoneNumber: phoneNumber)
+        }
     }
 
     /// Personal-scale directory (tens to low thousands of entries) -- always
     /// provide the full current snapshot rather than implementing
     /// incremental add/remove deltas. Apple's own extension template does
     /// the same for this data size.
-    private func addAllIdentificationEntries(to context: CXCallDirectoryExtensionContext) {
-        guard let snapshot = SharedDirectoryStore.load() else { return }
-
+    private func addAllIdentificationEntries(from snapshot: DirectorySnapshot, to context: CXCallDirectoryExtensionContext) {
         // CXCallDirectoryExtensionContext requires entries added in strictly
         // ascending numeric order for a full (non-incremental) reload.
         let sorted = snapshot.entries.sorted {

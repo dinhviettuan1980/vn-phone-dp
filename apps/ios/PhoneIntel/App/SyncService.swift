@@ -43,13 +43,13 @@ final class SyncService: ObservableObject {
         defer { isSyncing = false }
 
         do {
-            let entries = try await fetchEntries()
-            let snapshot = DirectorySnapshot(entries: entries, syncedAt: Date())
+            let export = try await fetchExport()
+            let snapshot = DirectorySnapshot(entries: export.entries, blockedDigits: export.blockedDigits, syncedAt: Date())
             try saveSnapshot(snapshot)
             try await reloadExtension()
 
             lastSyncedAt = snapshot.syncedAt
-            lastEntryCount = entries.count
+            lastEntryCount = export.entries.count
         } catch let error as SyncError {
             lastError = error.errorDescription
         } catch {
@@ -59,10 +59,16 @@ final class SyncService: ObservableObject {
 
     private struct ExportResponse: Decodable {
         let entries: [DirectoryEntry]
+        let blockedDigits: [String]
         let count: Int
+
+        enum CodingKeys: String, CodingKey {
+            case entries, count
+            case blockedDigits = "blocked_digits"
+        }
     }
 
-    private func fetchEntries() async throws -> [DirectoryEntry] {
+    private func fetchExport() async throws -> ExportResponse {
         let data: Data
         let response: URLResponse
         do {
@@ -74,7 +80,7 @@ final class SyncService: ObservableObject {
             throw SyncError.badResponse
         }
         do {
-            return try JSONDecoder().decode(ExportResponse.self, from: data).entries
+            return try JSONDecoder().decode(ExportResponse.self, from: data)
         } catch {
             throw SyncError.decoding(error)
         }

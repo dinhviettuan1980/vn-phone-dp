@@ -27,9 +27,11 @@ struct SuppressionEntry: Codable, Identifiable {
 @MainActor
 final class SettingsViewModel: ObservableObject {
     static let suppressionURL = URL(string: "https://vn-phone.tuandv.id.vn/api/v1/settings/suppressed-numbers")!
+    static let appSettingsURL = URL(string: "https://vn-phone.tuandv.id.vn/api/v1/settings/app")!
 
     @Published var knownNumbers: [DirectoryEntry] = []
     @Published var suppressed: Set<String> = []
+    @Published var autoBlockHighRisk = false
     @Published var isLoading = false
     @Published var errorMessage: String?
 
@@ -37,6 +39,39 @@ final class SettingsViewModel: ObservableObject {
 
     func loadKnownNumbers() {
         knownNumbers = (SharedDirectoryStore.load()?.entries ?? []).sorted { $0.label < $1.label }
+    }
+
+    func loadAppSettings() async {
+        do {
+            let (data, response) = try await URLSession.shared.data(from: Self.appSettingsURL)
+            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                throw URLError(.badServerResponse)
+            }
+            struct AppSettingsResponse: Decodable { let autoBlockHighRisk: Bool
+                enum CodingKeys: String, CodingKey { case autoBlockHighRisk = "auto_block_high_risk" }
+            }
+            autoBlockHighRisk = try JSONDecoder().decode(AppSettingsResponse.self, from: data).autoBlockHighRisk
+        } catch {
+            // Non-fatal -- leave the local default (false) and let the user retry the toggle.
+        }
+    }
+
+    func setAutoBlockHighRisk(_ enabled: Bool) async {
+        do {
+            var request = URLRequest(url: Self.appSettingsURL)
+            request.httpMethod = "PUT"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONEncoder().encode(["auto_block_high_risk": enabled])
+            let (_, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                throw URLError(.badServerResponse)
+            }
+            autoBlockHighRisk = enabled
+            errorMessage = nil
+            await syncService.sync()
+        } catch {
+            errorMessage = "Không cập nhật được cài đặt tự động chặn, thử lại sau."
+        }
     }
 
     func loadSuppressed() async {
@@ -100,6 +135,20 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("Chặn cuộc gọi tự động") {
+                    Toggle(isOn: Binding(
+                        get: { viewModel.autoBlockHighRisk },
+                        set: { newValue in Task { await viewModel.setAutoBlockHighRisk(newValue) } }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Tự động chặn số bị báo lừa đảo nhiều")
+                            Text("Chỉ áp dụng cho số có từ 10 người báo cáo LỪA ĐẢO trở lên. Cuộc gọi sẽ không đổ chuông, đi thẳng vào hộp thư thoại. Mặc định TẮT.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
                 Section {
                     Text("Số đã bật sẽ KHÔNG còn hiện tên/cảnh báo khi gọi đến nữa -- xuất hiện như số lạ bình thường. Dữ liệu định danh/báo cáo của số đó vẫn được giữ nguyên, chỉ là ẩn đi.")
                         .font(.footnote)
@@ -141,6 +190,7 @@ struct SettingsView: View {
             .task {
                 viewModel.loadKnownNumbers()
                 await viewModel.loadSuppressed()
+                await viewModel.loadAppSettings()
             }
             .overlay {
                 if viewModel.isLoading {

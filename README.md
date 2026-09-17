@@ -62,6 +62,59 @@ cron/pm2 process on the VPS — same "no automated crawl job" state Phase 1
 left, now with the tooling to turn it on when wanted (see acquisition
 stats to decide when).
 
+## Phase 3 — Spam intelligence & silence controls (2026-09-18)
+
+Adds the two Truecaller-defining features Phase 1/2 didn't have yet: crowd-
+sourced spam/scam reporting, and per-number control over whether a known
+number gets announced on an incoming call at all.
+
+- **Spam/scam reporting** (`spam_reports` table, migration `0006`) — anyone
+  can report a number as SPAM/SCAM/TELEMARKETING/HARASSMENT/OTHER,
+  independent of whether that number has any crawled identity. Deliberately
+  NOT part of the raw_documents provenance chain, same treatment as
+  `personal_call_logs` (0002) — see `docs/architecture.md`.
+  - `POST /api/v1/spam-reports` — submit a report (`phone_raw`, optional
+    `category`/`note`/`reporter_ref`).
+  - `GET /api/v1/spam-reports/:phone` — report count, distinct reporters,
+    risk level, category breakdown, recent reports for one number.
+  - Risk level is rule-based on **distinct reporters** (via optional
+    client-supplied `reporter_ref`, not raw report count, so one person
+    mashing the report button can't inflate it): 1-2 → LOW, 3-9 → MEDIUM,
+    10+ → HIGH. See `computeRiskLevel` in
+    `apps/api/src/services/spamReports.ts`.
+  - `GET /phones/:phone` now includes a `spam` field with the same summary,
+    surfaced directly in the lookup FE as a warning banner plus a "Báo cáo
+    spam/lừa đảo" button.
+  - The iOS Call Directory export (`getCallDirectoryEntries`) now also
+    warns about MEDIUM/HIGH-risk numbers **even with no crawled identity at
+    all** — prefixing (MEDIUM) or overriding (HIGH) the caller-ID label —
+    matching Truecaller's "Spam Likely" behavior of flagging a number
+    before any identity data exists for it.
+- **Label suppression / "don't announce this number"** (`label_suppressions`
+  table, migration `0007`) — lets the phone's owner silence a *known*
+  number (a real business, or a spam-flagged one) without deleting its
+  underlying identity/report data, so it shows up like a normal unknown
+  call instead. This is the Truecaller behavior of unknown numbers staying
+  silent while known numbers get announced, PLUS a manual override to move
+  a known number back into "silent" territory.
+  - `GET/POST /api/v1/settings/suppressed-numbers`,
+    `DELETE /api/v1/settings/suppressed-numbers/:phone`,
+    `GET .../:phone/status`.
+  - `getCallDirectoryEntries` drops any suppressed number from the export
+    entirely before it reaches the extension.
+  - Primary UI is the **iOS app** (`apps/ios/PhoneIntel/App/SettingsView.swift`,
+    opened via a button on the home screen): lists every known number from
+    the already-synced App Group snapshot with a per-number toggle, and
+    triggers a re-sync (re-fetch export + reload the CallKit extension)
+    immediately after each change so it takes effect before the next call,
+    not just after the next manual sync. The web FE intentionally does NOT
+    duplicate this control — it's a stats/lookup surface, day-to-day usage
+    is the phone (see "Trạng thái dự án" below).
+- Tests: `apps/api/src/__tests__/spamReports.test.ts`,
+  `apps/api/src/__tests__/labelSuppressions.test.ts` (integration, same
+  pattern as `userConfirmedIdentity.test.ts` — skipped automatically
+  without `DATABASE_URL`).
+
 ## Trạng thái dự án (cập nhật gần nhất: 2026-09-04)
 
 *Đọc phần này trước nếu tiếp tục làm việc trên project — tóm tắt đầy đủ để
@@ -138,10 +191,19 @@ nhiều càng tốt), sau đó mới đến cơ quan chính phủ.**
 - `GET /call-logs/unknown` — danh sách số đã xuất hiện trong nhật ký cuộc
   gọi nhưng chưa có identity nào trong DB, sắp theo số lần gọi giảm dần
   (danh sách "cần tìm hiểu").
+- `POST /spam-reports`, `GET /spam-reports/:phone` — báo cáo spam/lừa đảo
+  crowdsourced (Phase 3), độc lập với danh tính đã crawl. Xem chi tiết ở
+  mục "Phase 3" phía trên.
+- `GET/POST /settings/suppressed-numbers`,
+  `DELETE /settings/suppressed-numbers/:phone` — danh sách số đã biết
+  nhưng người dùng chọn tắt thông báo (Phase 3).
 
 **FE web** (`apps/web/`, tại vn-phone.tuandv.id.vn): không build step
 (HTML/CSS/JS thuần), gọi thẳng API cùng domain (không cần CORS). 2 tab:
-- **Tra cứu**: 1 ô tìm kiếm số điện thoại.
+- **Tra cứu**: 1 ô tìm kiếm số điện thoại, kèm banner cảnh báo spam (nếu có
+  báo cáo) và nút gửi báo cáo spam/lừa đảo cho số vừa tra (Phase 3). Chỉ để
+  xem/thống kê — không có UI tắt thông báo theo số ở đây, việc đó nằm ở app
+  iOS vì đó mới là nơi dùng hàng ngày.
 - **Nhật ký cuộc gọi**: form dán/nhập danh sách số + số lần gọi cho 1 ngày
   (vì iOS không cho app đọc lịch sử cuộc gọi — xem mục 4, bug/quyết định #7),
   bảng tổng kết theo khoảng ngày, và bảng "số cần tìm hiểu".
@@ -152,7 +214,11 @@ CallKit Call Directory Extension —
   lưu vào App Group container dùng chung với extension.
 - Khi có cuộc gọi đến (hoặc xem Lịch sử cuộc gọi) từ 1 trong 142 số: iOS tự
   hiện **"Tra Số VN: <tên tổ chức>"** — hoàn toàn do iOS xử lý native, app
-  không cần đang chạy.
+  không cần đang chạy. Số bị báo cáo spam/lừa đảo đủ ngưỡng cũng tự hiện
+  cảnh báo tương tự, kể cả chưa có danh tính crawl nào (Phase 3).
+- Nút "Tắt thông báo theo số" (Phase 3): liệt kê mọi số đã biết (từ snapshot
+  đã đồng bộ), toggle bật/tắt việc hiện label cho từng số — số tắt sẽ hiện
+  như cuộc gọi lạ bình thường, không xoá dữ liệu định danh/báo cáo bên dưới.
 - **Chưa có**: đồng bộ nền tự động (background refresh) — hiện phải tự mở
   app bấm nút mỗi lần muốn cập nhật dữ liệu mới nhất.
 

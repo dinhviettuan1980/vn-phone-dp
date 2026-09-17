@@ -1,9 +1,11 @@
 import Foundation
 
 /// One caller-ID entry, matching the API's /api/v1/export/call-directory shape.
-struct DirectoryEntry: Codable {
+struct DirectoryEntry: Codable, Identifiable {
     let phoneDigits: String
     let label: String
+
+    var id: String { phoneDigits }
 
     enum CodingKeys: String, CodingKey {
         case phoneDigits, label

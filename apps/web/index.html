@@ -54,6 +54,25 @@
           <div id="stats-row" class="stats-row"></div>
         </div>
 
+        <div id="spam-banner" class="spam-banner" hidden></div>
+
+        <div class="spam-report-box">
+          <button id="spam-report-toggle" type="button" class="spam-report-toggle">Báo cáo số này là spam/lừa đảo</button>
+          <form id="spam-report-form" class="spam-report-form" hidden>
+            <label for="spam-category">Loại</label>
+            <select id="spam-category">
+              <option value="SPAM">Làm phiền / Telesale</option>
+              <option value="SCAM">Lừa đảo</option>
+              <option value="TELEMARKETING">Quảng cáo</option>
+              <option value="HARASSMENT">Quấy rối</option>
+              <option value="OTHER">Khác</option>
+            </select>
+            <input id="spam-note" type="text" maxlength="280" placeholder="Ghi chú (không bắt buộc)" />
+            <button type="submit">Gửi báo cáo</button>
+          </form>
+          <div id="spam-report-status" class="status" hidden></div>
+        </div>
+
         <h2 class="identities-title">Thông tin nhận diện</h2>
         <ul id="identities-list" class="identities-list"></ul>
         <p id="no-identities" class="empty-note" hidden>

@@ -36,12 +36,55 @@ const STATUS_LABELS = {
   REJECTED: "Đã loại bỏ",
 };
 
+const SPAM_RISK_LABELS = {
+  LOW: "Có báo cáo spam (chưa đủ nhiều để cảnh báo trên cuộc gọi đến)",
+  MEDIUM: "⚠️ Nhiều người báo cáo số này là spam/quảng cáo",
+  HIGH: "🚫 Rất nhiều người báo cáo số này là spam/lừa đảo",
+};
+
+const SPAM_CATEGORY_LABELS = {
+  SPAM: "làm phiền",
+  SCAM: "lừa đảo",
+  TELEMARKETING: "quảng cáo",
+  HARASSMENT: "quấy rối",
+  OTHER: "khác",
+};
+
 const form = document.getElementById("search-form");
 const input = document.getElementById("phone-input");
 const statusEl = document.getElementById("status");
 const resultEl = document.getElementById("result");
 const identitiesList = document.getElementById("identities-list");
 const noIdentitiesEl = document.getElementById("no-identities");
+const spamBanner = document.getElementById("spam-banner");
+const spamReportToggle = document.getElementById("spam-report-toggle");
+const spamReportForm = document.getElementById("spam-report-form");
+const spamReportStatus = document.getElementById("spam-report-status");
+const spamCategoryInput = document.getElementById("spam-category");
+const spamNoteInput = document.getElementById("spam-note");
+
+let currentLookupPhone = null;
+
+function getReporterRef() {
+  const key = "phoneintel_reporter_ref";
+  let ref = localStorage.getItem(key);
+  if (!ref) {
+    ref = crypto.randomUUID();
+    localStorage.setItem(key, ref);
+  }
+  return ref;
+}
+
+function renderSpamBanner(spam) {
+  if (!spam || spam.risk_level === "NONE") {
+    spamBanner.hidden = true;
+    return;
+  }
+  spamBanner.hidden = false;
+  spamBanner.className = `spam-banner ${spam.risk_level}`;
+  const categoryNote = spam.top_category ? ` (chủ yếu: ${SPAM_CATEGORY_LABELS[spam.top_category] || spam.top_category})` : "";
+  spamBanner.textContent = `${SPAM_RISK_LABELS[spam.risk_level] || spam.risk_level} — ${spam.distinct_reporters} người báo cáo${categoryNote}.`;
+}
 
 function setStatus(kind, message) {
   if (!message) {
@@ -68,6 +111,10 @@ function confidenceClass(confidence) {
 
 function renderResult(data) {
   resultEl.hidden = false;
+  currentLookupPhone = data.phone.normalized || data.phone.raw_input;
+  renderSpamBanner(data.spam);
+  spamReportForm.hidden = true;
+  spamReportStatus.hidden = true;
 
   document.getElementById("result-phone").textContent =
     data.phone.normalized || data.phone.raw_input;
@@ -155,6 +202,51 @@ form.addEventListener("submit", (e) => {
   const query = input.value.trim();
   if (!query) return;
   lookupPhone(query);
+});
+
+// ---------------------------------------------------------------------
+// Spam/scam reporting
+// ---------------------------------------------------------------------
+spamReportToggle.addEventListener("click", () => {
+  spamReportForm.hidden = !spamReportForm.hidden;
+});
+
+spamReportForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentLookupPhone) return;
+
+  spamReportStatus.hidden = false;
+  spamReportStatus.className = "status loading";
+  spamReportStatus.textContent = "Đang gửi báo cáo…";
+
+  try {
+    const res = await fetch("/api/v1/spam-reports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phone_raw: currentLookupPhone,
+        category: spamCategoryInput.value,
+        note: spamNoteInput.value.trim() || undefined,
+        reporter_ref: getReporterRef(),
+      }),
+    });
+    if (!res.ok) throw new Error("bad response");
+    const data = await res.json();
+
+    spamReportStatus.className = "status";
+    spamReportStatus.textContent = `Đã ghi nhận báo cáo. Số này hiện có ${data.report_count} báo cáo.`;
+    spamNoteInput.value = "";
+    spamReportForm.hidden = true;
+
+    renderSpamBanner({
+      risk_level: data.risk_level,
+      distinct_reporters: data.distinct_reporters,
+      top_category: spamCategoryInput.value,
+    });
+  } catch (err) {
+    spamReportStatus.className = "status error";
+    spamReportStatus.textContent = "Gửi báo cáo thất bại, thử lại sau.";
+  }
 });
 
 // ---------------------------------------------------------------------

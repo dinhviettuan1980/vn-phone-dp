@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var sync = SyncService()
+    @State private var showingSettings = false
 
     private var lastSyncedText: String {
         guard let date = sync.lastSyncedAt else { return "Chưa đồng bộ lần nào" }
@@ -64,6 +65,19 @@ struct ContentView: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(sync.isSyncing)
 
+                    Button {
+                        showingSettings = true
+                    } label: {
+                        HStack {
+                            Text("Tắt thông báo theo số")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                        }
+                        .padding()
+                    }
+                    .buttonStyle(.bordered)
+                    .frame(maxWidth: .infinity)
+
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Bật nhận diện cuộc gọi")
                             .font(.headline)
@@ -81,6 +95,9 @@ struct ContentView: View {
                 .padding()
             }
             .navigationBarHidden(true)
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
         }
         .task {
             await sync.sync()

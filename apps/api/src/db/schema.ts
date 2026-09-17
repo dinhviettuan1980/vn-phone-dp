@@ -71,6 +71,14 @@ export const identityStatusEnum = pgEnum("identity_status", [
   "REJECTED",
 ]);
 
+export const spamReportCategoryEnum = pgEnum("spam_report_category", [
+  "SPAM",
+  "SCAM",
+  "TELEMARKETING",
+  "HARASSMENT",
+  "OTHER",
+]);
+
 export const dataSources = pgTable("data_sources", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
@@ -230,3 +238,32 @@ export const personalCallLogs = pgTable(
     dateIdx: index("personal_call_logs_date_idx").on(t.callDate),
   })
 );
+
+// Crowdsourced spam/scam reports -- deliberately not part of the
+// raw_documents/phone_observations provenance chain, same reasoning as
+// personal_call_logs. See database/migrations/0006_spam_reports.sql.
+export const spamReports = pgTable(
+  "spam_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    phoneRaw: text("phone_raw").notNull(),
+    phoneNormalized: text("phone_normalized"),
+    category: spamReportCategoryEnum("category").notNull().default("SPAM"),
+    note: text("note"),
+    reporterRef: text("reporter_ref"),
+    reportedAt: timestamp("reported_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    phoneIdx: index("spam_reports_phone_idx").on(t.phoneNormalized),
+    reportedAtIdx: index("spam_reports_reported_at_idx").on(t.reportedAt),
+  })
+);
+
+// User-configured "don't label this number" list -- see
+// database/migrations/0007_label_suppressions.sql.
+export const labelSuppressions = pgTable("label_suppressions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  phoneNormalized: text("phone_normalized").notNull(),
+  reason: text("reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

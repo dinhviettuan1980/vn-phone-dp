@@ -37,6 +37,10 @@ export type IdentityCategory =
 
 export type IdentityStatus = "CANDIDATE" | "CONFIRMED" | "REJECTED";
 
+export type SpamReportCategory = "SPAM" | "SCAM" | "TELEMARKETING" | "HARASSMENT" | "OTHER";
+
+export type SpamRiskLevel = "NONE" | "LOW" | "MEDIUM" | "HIGH";
+
 export interface NormalizedPhoneResult {
   raw: string;
   normalized: string | null;
@@ -79,4 +83,10 @@ export interface PhoneLookupResponse {
     evidence_count: number;
     status: IdentityStatus;
   }>;
+  spam: {
+    report_count: number;
+    distinct_reporters: number;
+    risk_level: SpamRiskLevel;
+    top_category: SpamReportCategory | null;
+  };
 }

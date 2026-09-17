@@ -2,7 +2,10 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { phoneNumbers, phoneIdentities, phoneObservations, rawDocuments } from "../db/schema.js";
 import { normalizeVietnamPhone } from "../normalizers/vietnamPhone.js";
+import { getSpamSummary } from "./spamReports.js";
 import type { PhoneLookupResponse } from "@phoneintel/shared-types";
+
+const NO_SPAM_REPORTS = { report_count: 0, distinct_reporters: 0, risk_level: "NONE" as const, top_category: null };
 
 export async function lookupPhone(rawInput: string): Promise<PhoneLookupResponse> {
   const normalized = normalizeVietnamPhone(rawInput);
@@ -12,8 +15,17 @@ export async function lookupPhone(rawInput: string): Promise<PhoneLookupResponse
       phone: { raw_input: rawInput, normalized: null, type: normalized.type, valid: false },
       statistics: { observation_count: 0, source_count: 0, first_seen_at: null, last_seen_at: null },
       identities: [],
+      spam: NO_SPAM_REPORTS,
     };
   }
+
+  const spamSummary = await getSpamSummary(normalized.normalized);
+  const spam = {
+    report_count: spamSummary.reportCount,
+    distinct_reporters: spamSummary.distinctReporters,
+    risk_level: spamSummary.riskLevel,
+    top_category: spamSummary.topCategory,
+  };
 
   const [phoneRow] = await db
     .select()
@@ -26,6 +38,7 @@ export async function lookupPhone(rawInput: string): Promise<PhoneLookupResponse
       phone: { raw_input: rawInput, normalized: normalized.normalized, type: normalized.type, valid: normalized.valid },
       statistics: { observation_count: 0, source_count: 0, first_seen_at: null, last_seen_at: null },
       identities: [],
+      spam,
     };
   }
 
@@ -62,6 +75,7 @@ export async function lookupPhone(rawInput: string): Promise<PhoneLookupResponse
       evidence_count: i.evidenceCount,
       status: i.status,
     })),
+    spam,
   };
 }
 

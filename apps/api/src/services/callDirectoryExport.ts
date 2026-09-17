@@ -1,4 +1,6 @@
 import { pool } from "../db/client.js";
+import { normalizeVietnamPhone } from "../normalizers/vietnamPhone.js";
+import { getSuppressedSet } from "./labelSuppressions.js";
 
 export interface CallDirectoryEntry {
   /** Full E.164 digits, no "+", as required by CXCallDirectoryPhoneNumber (Int64). */
@@ -12,6 +14,69 @@ function bestLabel(displayName: string): string {
   // informative for caller ID (source name is real), just strip the wrapper.
   const match = displayName.match(/^Unknown \((.+)\)$/);
   return match ? match[1] : displayName;
+}
+
+interface SpamFlag {
+  distinctReporters: number;
+  topCategory: string;
+}
+
+/**
+ * Numbers with enough distinct spam/scam reports to surface directly on the
+ * native call screen -- the Truecaller-defining feature of warning about a
+ * number BEFORE the identity pipeline has any crawled evidence for it.
+ * Threshold (>=3 distinct reporters) matches computeRiskLevel's MEDIUM cutoff
+ * in services/spamReports.ts -- deliberately not just ">=1 report" so one
+ * person mashing "report" (or one bad-faith report) can't label a real
+ * business's number as spam on someone's phone.
+ */
+async function getSpamFlags(): Promise<Map<string, SpamFlag>> {
+  const result = await pool.query<{
+    phone_normalized: string;
+    distinct_reporters: string;
+    category: string;
+    category_count: string;
+  }>(`
+    WITH filtered AS (
+      SELECT phone_normalized, category, COALESCE(reporter_ref, id::text) AS reporter_key
+      FROM spam_reports
+      WHERE phone_normalized IS NOT NULL
+    ),
+    totals AS (
+      SELECT phone_normalized, count(DISTINCT reporter_key) AS distinct_reporters
+      FROM filtered
+      GROUP BY phone_normalized
+      HAVING count(DISTINCT reporter_key) >= 3
+    ),
+    by_category AS (
+      SELECT phone_normalized, category, count(*) AS category_count
+      FROM filtered
+      WHERE phone_normalized IN (SELECT phone_normalized FROM totals)
+      GROUP BY phone_normalized, category
+    )
+    SELECT t.phone_normalized, t.distinct_reporters, bc.category, bc.category_count
+    FROM totals t
+    JOIN by_category bc ON bc.phone_normalized = t.phone_normalized
+  `);
+
+  const flags = new Map<string, { distinctReporters: number; topCategory: string; topCount: number }>();
+  for (const row of result.rows) {
+    const count = Number(row.category_count);
+    const existing = flags.get(row.phone_normalized);
+    if (!existing || count > existing.topCount) {
+      flags.set(row.phone_normalized, {
+        distinctReporters: Number(row.distinct_reporters),
+        topCategory: row.category,
+        topCount: count,
+      });
+    }
+  }
+  return new Map([...flags].map(([phone, v]) => [phone, { distinctReporters: v.distinctReporters, topCategory: v.topCategory }]));
+}
+
+function spamLabel(flag: SpamFlag): string {
+  const kind = flag.topCategory === "SCAM" ? "LỪA ĐẢO" : "SPAM";
+  return `⚠️ Nghi ngờ ${kind} (${flag.distinctReporters} báo cáo)`;
 }
 
 /**
@@ -51,12 +116,36 @@ export async function getCallDirectoryEntries(): Promise<CallDirectoryEntry[]> {
     ORDER BY pn.phone_e164, pi.confidence DESC
   `);
 
-  const entries: CallDirectoryEntry[] = result.rows.map((row) => ({
-    phoneDigits: row.phone_e164.replace(/^\+/, ""),
-    label: bestLabel(row.display_name),
-  }));
+  const spamFlags = await getSpamFlags();
+  const seenPhones = new Set<string>();
+
+  const entries: CallDirectoryEntry[] = result.rows.map((row) => {
+    seenPhones.add(row.phone_e164);
+    const flag = spamFlags.get(row.phone_e164);
+    const label = flag
+      ? flag.distinctReporters >= 10
+        ? spamLabel(flag) // HIGH: override -- warning outweighs a crawled business name
+        : `⚠️ ${bestLabel(row.display_name)}` // MEDIUM: prefix, keep the known name
+      : bestLabel(row.display_name);
+    return { phoneDigits: row.phone_e164.replace(/^\+/, ""), label };
+  });
+
+  // Numbers with no crawled identity at all but enough spam reports to warn
+  // about anyway -- Truecaller flags these too, not just known businesses.
+  for (const [phoneE164, flag] of spamFlags) {
+    if (seenPhones.has(phoneE164)) continue;
+    const type = normalizeVietnamPhone(phoneE164).type;
+    if (type !== "MOBILE" && type !== "LANDLINE") continue;
+    entries.push({ phoneDigits: phoneE164.replace(/^\+/, ""), label: spamLabel(flag) });
+  }
+
+  // User-configured silence list (see database/migrations/0007_label_suppressions.sql)
+  // -- a suppressed number is dropped entirely so it appears exactly like an
+  // unknown call, without touching its underlying identity/report data.
+  const suppressed = await getSuppressedSet();
+  const visibleEntries = entries.filter((e) => !suppressed.has(`+${e.phoneDigits}`));
 
   // Apple requires strictly ascending numeric order for a full reload.
-  entries.sort((a, b) => (BigInt(a.phoneDigits) < BigInt(b.phoneDigits) ? -1 : 1));
-  return entries;
+  visibleEntries.sort((a, b) => (BigInt(a.phoneDigits) < BigInt(b.phoneDigits) ? -1 : 1));
+  return visibleEntries;
 }

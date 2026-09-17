@@ -6,6 +6,8 @@ import { callLogRoutes } from "./routes/callLog.js";
 import { acquisitionRoutes } from "./routes/acquisition.js";
 import { monitoringRoutes } from "./routes/monitoring.js";
 import { userConfirmedIdentityRoutes } from "./routes/userConfirmedIdentity.js";
+import { spamReportRoutes } from "./routes/spamReports.js";
+import { settingsRoutes } from "./routes/settings.js";
 
 const app = Fastify({ logger: true });
 
@@ -18,6 +20,8 @@ await app.register(callLogRoutes);
 await app.register(acquisitionRoutes);
 await app.register(monitoringRoutes);
 await app.register(userConfirmedIdentityRoutes);
+await app.register(spamReportRoutes);
+await app.register(settingsRoutes);
 
 const port = Number(process.env.PORT ?? 3000);
 app

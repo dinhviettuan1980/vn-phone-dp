@@ -4,7 +4,7 @@ import { importCallLogEntries, getCallLogSummary, getUnknownNumbers } from "../s
 interface ImportBody {
   call_date: string;
   notes?: string;
-  entries: Array<{ phone_raw: string; call_count?: number }>;
+  entries: Array<{ phone_raw: string; call_count?: number; notes?: string }>;
 }
 
 export async function callLogRoutes(app: FastifyInstance) {
@@ -20,7 +20,7 @@ export async function callLogRoutes(app: FastifyInstance) {
 
     const results = await importCallLogEntries(
       call_date,
-      entries.map((e) => ({ phoneRaw: e.phone_raw, callCount: e.call_count })),
+      entries.map((e) => ({ phoneRaw: e.phone_raw, callCount: e.call_count, notes: e.notes })),
       notes
     );
 

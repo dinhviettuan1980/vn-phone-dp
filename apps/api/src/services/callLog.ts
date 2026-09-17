@@ -4,6 +4,7 @@ import { normalizeVietnamPhone } from "../normalizers/vietnamPhone.js";
 export interface CallLogImportEntry {
   phoneRaw: string;
   callCount?: number;
+  notes?: string;
 }
 
 export interface CallLogImportResult {
@@ -19,17 +20,23 @@ export interface CallLogImportResult {
  * call history -- see README.md). One row per (phone, date) batch; the
  * caller resubmitting the same phone+date just adds another row, which is
  * fine since we only ever SUM call_count, never assume uniqueness.
+ *
+ * `notes` can be given per-entry (e.g. the label a caller-ID app like
+ * Truecaller showed for that specific number, transcribed from a
+ * screenshot) or once for the whole batch -- per-entry wins when both are
+ * given, so a mixed batch (some numbers with a label, some without) works.
  */
 export async function importCallLogEntries(
   callDate: string,
   entries: CallLogImportEntry[],
-  notes?: string
+  batchNotes?: string
 ): Promise<CallLogImportResult[]> {
   const results: CallLogImportResult[] = [];
 
   for (const entry of entries) {
     const normalized = normalizeVietnamPhone(entry.phoneRaw);
     const callCount = entry.callCount && entry.callCount > 0 ? entry.callCount : 1;
+    const notes = entry.notes ?? batchNotes;
 
     await pool.query(
       `INSERT INTO personal_call_logs (phone_raw, phone_normalized, call_date, call_count, notes)

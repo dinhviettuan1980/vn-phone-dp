@@ -27,16 +27,20 @@ export interface SpamSummary {
 
 /**
  * Rule-based, same philosophy as the rest of this project's aggregation
- * (docs/architecture.md): no ML, thresholds are the "distinct reporters"
- * count so one person spamming the report button repeatedly can't push a
- * number to HIGH on their own. reporter_ref is optional and client-supplied
- * (no accounts exist) -- reports with no reporter_ref each count as their
- * own distinct reporter since there's nothing to dedupe them against.
+ * (docs/architecture.md): no ML. Owner's call (2026-09-22): a crawled
+ * institutional number almost never actually spam-calls anyone, so the real
+ * signal this app needs is "did anyone at all flag this unknown number" --
+ * a single report already matters and should surface immediately, not wait
+ * for a crowd. Only HIGH (auto-block eligibility, see
+ * services/callDirectoryExport.ts:getBlockedDigits) still requires genuine
+ * volume, since blocking is a much stronger action than a warning label.
+ * reporter_ref is optional and client-supplied (no accounts exist) --
+ * reports with no reporter_ref each count as their own distinct reporter
+ * since there's nothing to dedupe them against.
  */
 export function computeRiskLevel(distinctReporters: number): SpamRiskLevel {
   if (distinctReporters >= 10) return "HIGH";
-  if (distinctReporters >= 3) return "MEDIUM";
-  if (distinctReporters >= 1) return "LOW";
+  if (distinctReporters >= 1) return "MEDIUM";
   return "NONE";
 }
 

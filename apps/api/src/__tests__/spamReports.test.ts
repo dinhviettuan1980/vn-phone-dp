@@ -16,9 +16,8 @@ const TEST_PHONE_E164 = "+84399000222";
 describe("computeRiskLevel", () => {
   it("thresholds on distinct reporters, not raw report count", () => {
     expect(computeRiskLevel(0)).toBe("NONE");
-    expect(computeRiskLevel(1)).toBe("LOW");
-    expect(computeRiskLevel(2)).toBe("LOW");
-    expect(computeRiskLevel(3)).toBe("MEDIUM");
+    expect(computeRiskLevel(1)).toBe("MEDIUM");
+    expect(computeRiskLevel(2)).toBe("MEDIUM");
     expect(computeRiskLevel(9)).toBe("MEDIUM");
     expect(computeRiskLevel(10)).toBe("HIGH");
   });
@@ -40,14 +39,14 @@ describe.skipIf(!hasDb)("spam reporting (requires seeded DATABASE_URL)", () => {
     let summary = await getSpamSummary(TEST_PHONE_E164);
     expect(summary.reportCount).toBe(1);
     expect(summary.distinctReporters).toBe(1);
-    expect(summary.riskLevel).toBe("LOW");
+    expect(summary.riskLevel).toBe("MEDIUM");
 
     // Same reporter reporting again must not inflate distinct_reporters.
     await submitSpamReport({ phoneRaw: TEST_PHONE, category: "SCAM", reporterRef: "device-a" });
     summary = await getSpamSummary(TEST_PHONE_E164);
     expect(summary.reportCount).toBe(2);
     expect(summary.distinctReporters).toBe(1);
-    expect(summary.riskLevel).toBe("LOW");
+    expect(summary.riskLevel).toBe("MEDIUM");
 
     await submitSpamReport({ phoneRaw: TEST_PHONE, category: "SPAM", reporterRef: "device-b" });
     await submitSpamReport({ phoneRaw: TEST_PHONE, category: "SCAM", reporterRef: "device-c" });

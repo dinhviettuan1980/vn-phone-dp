@@ -79,9 +79,13 @@ number gets announced on an incoming call at all.
     risk level, category breakdown, recent reports for one number.
   - Risk level is rule-based on **distinct reporters** (via optional
     client-supplied `reporter_ref`, not raw report count, so one person
-    mashing the report button can't inflate it): 1-2 → LOW, 3-9 → MEDIUM,
-    10+ → HIGH. See `computeRiskLevel` in
-    `apps/api/src/services/spamReports.ts`.
+    mashing the report button can't inflate it past MEDIUM on their own):
+    1-9 → MEDIUM, 10+ → HIGH. Updated 2026-09-22 (was 3-9 → MEDIUM,
+    1-2 → LOW) -- owner's call: a crawled institutional number almost never
+    actually spam-calls anyone, so a single real report already matters more
+    than crawled data and should surface immediately rather than wait for a
+    crowd; only HIGH (auto-block eligibility) still requires genuine volume.
+    See `computeRiskLevel` in `apps/api/src/services/spamReports.ts`.
   - `GET /phones/:phone` now includes a `spam` field with the same summary,
     surfaced directly in the lookup FE as a warning banner plus a "Báo cáo
     spam/lừa đảo" button.

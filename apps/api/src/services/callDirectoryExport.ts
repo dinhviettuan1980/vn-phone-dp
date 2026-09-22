@@ -23,13 +23,16 @@ interface SpamFlag {
 }
 
 /**
- * Numbers with enough distinct spam/scam reports to surface directly on the
- * native call screen -- the Truecaller-defining feature of warning about a
+ * Numbers with at least one spam/scam report -- surfaced directly on the
+ * native call screen, the Truecaller-defining feature of warning about a
  * number BEFORE the identity pipeline has any crawled evidence for it.
- * Threshold (>=3 distinct reporters) matches computeRiskLevel's MEDIUM cutoff
- * in services/spamReports.ts -- deliberately not just ">=1 report" so one
- * person mashing "report" (or one bad-faith report) can't label a real
- * business's number as spam on someone's phone.
+ * Threshold (>=1 distinct reporter) matches computeRiskLevel's MEDIUM cutoff
+ * in services/spamReports.ts: a single report already matters here (see
+ * computeRiskLevel's doc comment) since crawled institutional numbers are
+ * the low-value case and a real caller-reported spam number is the whole
+ * point of this feature. Only the HIGH tier (>=10 reporters, see
+ * getBlockedDigits below) is still gated on genuine volume, because
+ * auto-blocking is a much stronger action than a warning label.
  */
 async function getSpamFlags(): Promise<Map<string, SpamFlag>> {
   const result = await pool.query<{
@@ -47,7 +50,7 @@ async function getSpamFlags(): Promise<Map<string, SpamFlag>> {
       SELECT phone_normalized, count(DISTINCT reporter_key) AS distinct_reporters
       FROM filtered
       GROUP BY phone_normalized
-      HAVING count(DISTINCT reporter_key) >= 3
+      HAVING count(DISTINCT reporter_key) >= 1
     ),
     by_category AS (
       SELECT phone_normalized, category, count(*) AS category_count
